@@ -2,23 +2,56 @@ const db = require('../db');
 
 const OrderController = {
 
-  // ✅ User places checkout
+  // ✅ USER — View their own orders
+  myOrders(req, res) {
+    const userId = req.session.user.id;
+
+    db.query(
+      `SELECT id, total AS totalAmount, created_at
+       FROM orders
+       WHERE userId = ?
+       ORDER BY created_at DESC`,
+      [userId],
+      (err, orders) => {
+        if (err) throw err;
+        res.render('orders', { orders });
+      }
+    );
+  },
+
+  // ✅ ADMIN — View ALL orders
+  adminOrders(req, res) {
+    db.query(
+      `SELECT o.id, o.total AS totalAmount, o.created_at, u.username
+       FROM orders o
+       JOIN users u ON o.userId = u.id
+       ORDER BY o.created_at DESC`,
+      (err, orders) => {
+        if (err) throw err;
+        res.render('adminOrders', { orders });
+      }
+    );
+  },
+
+  // ✅ CHECKOUT — Convert cart into an order
   checkout(req, res) {
     const userId = req.session.user.id;
 
     // 1️⃣ Find active cart
     db.query(
-      `SELECT id FROM cart WHERE userId = ? AND status = 'active'`,
+      `SELECT id FROM cart
+       WHERE userId = ? AND status = 'active'
+       LIMIT 1`,
       [userId],
-      (err, results) => {
+      (err, result) => {
         if (err) throw err;
 
-        if (results.length === 0) {
-          req.flash('error', 'No active cart to checkout.');
+        if (result.length === 0) {
+          req.flash('error', 'No items to checkout.');
           return res.redirect('/cart');
         }
 
-        const cartId = results[0].id;
+        const cartId = result[0].id;
 
         // 2️⃣ Calculate total
         db.query(
@@ -31,17 +64,17 @@ const OrderController = {
 
             const totalAmount = totalResult[0].total || 0;
 
-            // 3️⃣ Create order
+            // 3️⃣ Create order record
             db.query(
-              `INSERT INTO orders (userId, totalAmount)
+              `INSERT INTO orders (userId, total)
                VALUES (?, ?)`,
               [userId, totalAmount],
-              (err, orderResult) => {
+              (err, orderInsert) => {
                 if (err) throw err;
 
-                const orderId = orderResult.insertId;
+                const orderId = orderInsert.insertId;
 
-                // 4️⃣ Copy items into order_items
+                // 4️⃣ Copy items to order_items
                 db.query(
                   `INSERT INTO order_items (orderId, productId, quantity, priceAtTime)
                    SELECT ?, productId, quantity, priceAtTime
@@ -51,20 +84,27 @@ const OrderController = {
                   (err) => {
                     if (err) throw err;
 
-                    // 5️⃣ Mark cart as checked out
+                    // 5️⃣ Reduce inventory stock
                     db.query(
-                      `UPDATE cart SET status='checkedout' WHERE id = ?`,
-                      [cartId]
-                    );
+                      `UPDATE products p
+                       JOIN cart_items ci ON ci.productId = p.id
+                       SET p.quantity = GREATEST(p.quantity - ci.quantity, 0)
+                       WHERE ci.cartId = ?`,
+                      [cartId],
+                      (err) => {
+                        if (err) throw err;
 
-                    // 6️⃣ Create new empty cart
-                    db.query(
-                      `INSERT INTO cart (userId) VALUES (?)`,
-                      [userId]
-                    );
+                        // 6️⃣ Mark cart as checked out
+                        db.query(
+                          `UPDATE cart SET status = 'checkedout'
+                           WHERE id = ?`,
+                          [cartId]
+                        );
 
-                    req.flash('success', 'Order placed successfully!');
-                    res.redirect('/orders');
+                        req.flash('success', 'Order placed successfully!');
+                        res.redirect(`/orders/${orderId}`);
+                      }
+                    );
                   }
                 );
               }
@@ -75,52 +115,18 @@ const OrderController = {
     );
   },
 
-  // ✅ User sees their own orders
-  getUserOrders(req, res) {
-    const userId = req.session.user.id;
-
-    db.query(
-      `SELECT id, totalAmount, created_at
-       FROM orders
-       WHERE userId = ?
-       ORDER BY created_at DESC`,
-      [userId],
-      (err, orders) => {
-        if (err) throw err;
-
-        res.render('orders', { orders });
-      }
-    );
-  },
-
-  // ✅ Admin sees all orders
-  getAllOrders(req, res) {
-    db.query(
-      `SELECT o.id, o.totalAmount, o.created_at, u.username
-       FROM orders o
-       JOIN users u ON o.userId = u.id
-       ORDER BY o.created_at DESC`,
-      (err, orders) => {
-        if (err) throw err;
-
-        res.render('adminOrders', { orders });
-      }
-    );
-  },
-
-  // ✅ View single order details
-  getOrderDetails(req, res) {
+  // ✅ ORDER DETAILS PAGE
+  orderDetails(req, res) {
     const orderId = req.params.id;
 
     db.query(
-      `SELECT * FROM orders WHERE id = ?`,
+      `SELECT o.id, o.total AS totalAmount, o.created_at, u.username
+       FROM orders o
+       JOIN users u ON o.userId = u.id
+       WHERE o.id = ?`,
       [orderId],
-      (err, orderResult) => {
+      (err, orderData) => {
         if (err) throw err;
-
-        if (orderResult.length === 0) return res.redirect('/orders');
-
-        const order = orderResult[0];
 
         db.query(
           `SELECT oi.quantity, oi.priceAtTime, p.productName, p.image
@@ -132,7 +138,7 @@ const OrderController = {
             if (err) throw err;
 
             res.render('orderDetails', {
-              order,
+              order: orderData[0],
               items
             });
           }
