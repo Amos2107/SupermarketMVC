@@ -1,0 +1,34 @@
+<%- include('partials/header') %>
+<%- include('partials/navbar') %>
+
+<div class="container py-4">
+  <h2 class="mb-4">All Orders</h2>
+
+  <table class="table table-bordered text-center">
+    <thead class="table-dark">
+      <tr>
+        <th>Order ID</th>
+        <th>User</th>
+        <th>Date</th>
+        <th>Total ($)</th>
+        <th>View</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      <% orders.forEach(order => { %>
+        <tr>
+          <td><%= order.id %></td>
+          <td><%= order.username %></td>
+          <td><%= order.created_at.toDateString() %></td>
+          <td>$<%= Number(order.totalAmount).toFixed(2) %></td>
+          <td>
+            <a href="/orders/<%= order.id %>" class="btn btn-primary btn-sm">Details</a>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
+
+<%- include('partials/footer') %>

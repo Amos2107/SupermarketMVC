@@ -1,32 +1,41 @@
 const db = require('../db');
 
 const CartItem = {
-  // userId-based cart stored in DB (optional)
-  addOrUpdate: (userId, productId, quantity, callback) => {
-    const sql = `
-      INSERT INTO cartitems (userId, productId, quantity)
-      VALUES (?, ?, ?)
-      ON DUPLICATE KEY UPDATE quantity = quantity + VALUES(quantity)
-    `;
-    db.query(sql, [userId, productId, quantity], callback);
+  findActiveCartByUser(userId, callback) {
+    db.query(
+      "SELECT * FROM cart WHERE userId = ? AND status = 'active' LIMIT 1",
+      [userId],
+      callback
+    );
   },
 
-  getByUser: (userId, callback) => {
-    const sql = `
-      SELECT c.*, p.productName, p.price, p.image
-      FROM cartitems c
-      JOIN products p ON c.productId = p.id
-      WHERE c.userId = ?
-    `;
-    db.query(sql, [userId], callback);
+  createCart(userId, callback) {
+    db.query('INSERT INTO cart (userId) VALUES (?)', [userId], callback);
   },
 
-  remove: (id, callback) => {
-    db.query('DELETE FROM cartitems WHERE id = ?', [id], callback);
+  findByCartAndProduct(cartId, productId, callback) {
+    db.query(
+      'SELECT * FROM cart_items WHERE cartId = ? AND productId = ?',
+      [cartId, productId],
+      callback
+    );
   },
 
-  clear: (userId, callback) => {
-    db.query('DELETE FROM cartitems WHERE userId = ?', [userId], callback);
+  insertItem(cartId, productId, quantity, callback) {
+    db.query(
+      `INSERT INTO cart_items (cartId, productId, quantity, priceAtTime)
+       SELECT ?, id, ?, price FROM products WHERE id = ?`,
+      [cartId, quantity, productId],
+      callback
+    );
+  },
+
+  updateQuantity(cartId, productId, quantity, callback) {
+    db.query(
+      'UPDATE cart_items SET quantity = quantity + ? WHERE cartId = ? AND productId = ?',
+      [quantity, cartId, productId],
+      callback
+    );
   }
 };
 

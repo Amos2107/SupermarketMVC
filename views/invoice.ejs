@@ -1,0 +1,51 @@
+<%- include('partials/header') %>
+<%- include('partials/navbar') %>
+
+<div class="container py-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Invoice #<%= order.id %></h2>
+    <span class="text-muted">
+      Date: <%= order.created_at.toLocaleString ? order.created_at.toLocaleString() : order.created_at %>
+    </span>
+  </div>
+
+  <p><strong>Customer:</strong> <%= user.username %> (<%= user.email %>)</p>
+
+  <div class="table-responsive mt-4">
+    <table class="table table-bordered align-middle">
+      <thead class="table-dark">
+        <tr>
+          <th>Product</th>
+          <th>Image</th>
+          <th>Price ($)</th>
+          <th>Quantity</th>
+          <th>Subtotal ($)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% items.forEach(item => { %>
+          <tr>
+            <td><%= item.productName %></td>
+            <td>
+              <img src="/images/<%= item.image %>" class="img-thumbnail" style="max-width: 80px;">
+            </td>
+            <td>$<%= Number(item.priceAtTime).toFixed(2) %></td>
+            <td><%= item.quantity %></td>
+            <td>$<%= (item.priceAtTime * item.quantity).toFixed(2) %></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+
+  <h4 class="text-end mt-3">
+    Total: $<%= Number(order.total).toFixed(2) %>
+  </h4>
+
+  <div class="d-flex justify-content-between mt-4">
+    <a href="/orders" class="btn btn-outline-secondary">Back to Orders</a>
+    <a href="/shopping" class="btn btn-primary">Continue Shopping</a>
+  </div>
+</div>
+
+<%- include('partials/footer') %>

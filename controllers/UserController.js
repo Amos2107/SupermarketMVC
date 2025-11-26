@@ -3,8 +3,7 @@ const User = require('../models/User');
 const UserController = {
   showLogin: (req, res) => {
     res.render('login', {
-      errors: req.flash('error'),
-      messages: req.flash('success')
+      errors: req.flash('error')
     });
   },
 
@@ -24,6 +23,7 @@ const UserController = {
         req.flash('error', 'Registration failed.');
         return res.redirect('/register');
       }
+
       req.flash('success', 'Registration successful! Please log in.');
       res.redirect('/login');
     });
@@ -50,6 +50,7 @@ const UserController = {
       }
 
       req.session.user = results[0];
+      req.flash('success', 'Login successful!');
 
       if (req.session.user.role === 'admin') {
         res.redirect('/inventory');

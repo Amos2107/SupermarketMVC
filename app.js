@@ -3,46 +3,50 @@ require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
 const flash = require('connect-flash');
-const path = require('path');
 
 const app = express();
-
-// Import routes
-const authRoutes = require('./routes/authRoutes');
-const productRoutes = require('./routes/productRoutes');
-const cartRoutes = require('./routes/cartRoutes');
-
-// Import middleware (applies inside route files)
-const { checkAuthenticated, checkAdmin, validateRegistration } = require('./middleware');
 
 // View engine & static
 app.set('view engine', 'ejs');
 app.use(express.static('public'));
 app.use(express.urlencoded({ extended: false }));
 
-// Session & flash
-app.use(session({
-  secret: process.env.SESSION_SECRET || 'fallbacksecret',
-  resave: false,
-  saveUninitialized: true,
-  cookie: { maxAge: 1000 * 60 * 60 * 24 * 7 } // 1 week
-}));
+// Session
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || 'fallbacksecret',
+    resave: false,
+    saveUninitialized: true,
+    cookie: { maxAge: 1000 * 60 * 60 * 24 * 7 } // 1 week
+  })
+);
 
+// Flash
 app.use(flash());
 
-// Make user available in all views
+// Global locals for all views
 app.use((req, res, next) => {
   res.locals.currentUser = req.session.user;
+  res.locals.messages = {
+    success: req.flash('success'),
+    error: req.flash('error')
+  };
   next();
 });
 
-// Use routes
-app.use('/', productRoutes);   // Home, shopping, product details, admin inventory, CRUD
-app.use('/', authRoutes);      // Login, register, logout
-app.use('/cart', cartRoutes);  // Add/update/delete cart items
+// Routes
+const authRoutes = require('./routes/authRoutes');
+const productRoutes = require('./routes/productRoutes');
+const cartRoutes = require('./routes/cartRoutes');
+const orderRoutes = require('./routes/orderRoutes');
+
+app.use('/', authRoutes);
+app.use('/', productRoutes);
+app.use('/cart', cartRoutes);
+app.use('/', orderRoutes);
 
 // Start server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`SupermarketMVC server running on port ${PORT}`);
+  console.log(`✅ SupermarketMVC running on port ${PORT}`);
 });

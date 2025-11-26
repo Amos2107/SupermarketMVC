@@ -25,53 +25,50 @@
       </thead>
 
       <tbody>
+        <% let total = 0; %>
         <% cart.forEach(item => { %>
+          <% total += item.priceAtTime * item.quantity; %>
           <tr class="text-center">
-            
-            <!-- Product Name -->
             <td><%= item.productName %></td>
-
-            <!-- Image -->
             <td>
               <img src="/images/<%= item.image %>" class="img-thumbnail" style="max-width: 80px;">
             </td>
-
-            <!-- Price -->
-            <td>$<%= Number(item.price).toFixed(2) %></td>
-
-            <!-- Quantity Selector + Update Button -->
+            <td>$<%= Number(item.priceAtTime).toFixed(2) %></td>
             <td>
-              <form action="/cart/update/<%= item.id %>" method="POST" class="d-flex justify-content-center gap-1">
+              <form action="/cart/update/<%= item.cartItemId %>" method="POST" class="d-flex justify-content-center gap-1">
                 <select name="quantity" class="form-select w-auto">
                   <% for (let q = 1; q <= 10; q++) { %>
-                    <option value="<%= q %>" <%= item.quantity === q ? "selected" : "" %>>
-                      <%= q %>
-                    </option>
+                    <option value="<%= q %>" <%= item.quantity === q ? "selected" : "" %>><%= q %></option>
                   <% } %>
                 </select>
                 <button class="btn btn-primary btn-sm">Update</button>
               </form>
             </td>
-
-            <!-- Subtotal -->
-            <td>$<%= (item.price * item.quantity).toFixed(2) %></td>
-
-            <!-- Delete Button -->
+            <td>$<%= (item.priceAtTime * item.quantity).toFixed(2) %></td>
             <td>
-              <form action="/cart/delete/<%= item.id %>" method="POST">
+              <form action="/cart/delete/<%= item.cartItemId %>" method="POST">
                 <button class="btn btn-danger btn-sm">🗑 Delete</button>
               </form>
             </td>
-
           </tr>
         <% }) %>
       </tbody>
     </table>
   </div>
 
-  <h4 class="mt-3">Total: 
-    $<%= cart.reduce((sum, item) => sum + item.price * item.quantity, 0).toFixed(2) %>
-  </h4>
+  <div class="d-flex justify-content-between align-items-center mt-3">
+    <h4 class="mb-0">Total: $<%= total.toFixed(2) %></h4>
+
+    <div class="d-flex gap-2">
+      <form action="/cart/clear" method="GET">
+        <button type="submit" class="btn btn-outline-danger">Clear Cart</button>
+      </form>
+
+      <form action="/checkout" method="POST">
+        <button type="submit" class="btn btn-success">Checkout</button>
+      </form>
+    </div>
+  </div>
 
   <% } %>
 
