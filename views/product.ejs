@@ -1,27 +1,39 @@
 <%- include('partials/header') %>
 <%- include('partials/navbar') %>
 
-<div class="container">
-  <% if (product) { %>
-    <div class="row justify-content-center mt-4">
-      <div class="col-md-8 col-lg-6">
-        <div class="card shadow-sm border-0">
-          <div class="card-body p-4 text-center">
-            <h2 class="mb-3"><%= product.productName %></h2>
+<style>
+  .product-hero {
+    background: linear-gradient(135deg, #0d47a1, #0f6fde);
+    color: #fff;
+    border-radius: 16px;
+    padding: 22px;
+    box-shadow: 0 12px 28px rgba(13, 71, 161, 0.18);
+  }
+</style>
 
+<div class="container py-4">
+  <% if (product) { %>
+    <div class="row justify-content-center">
+      <div class="col-lg-8">
+        <div class="product-hero mb-3 d-flex justify-content-between align-items-center">
+          <div>
+            <p class="mb-1 text-uppercase small opacity-75">Product</p>
+            <h3 class="fw-bold mb-0"><%= product.productName %></h3>
+          </div>
+          <span class="badge bg-light text-primary fs-6">$<%= product.price.toFixed(2) %></span>
+        </div>
+
+        <div class="card shadow-sm border-0">
+          <div class="card-body text-center p-4">
             <img
               src="/images/<%= product.image %>"
               alt="<%= product.productName %>"
               class="img-fluid rounded mb-3 shadow-sm"
-              style="max-height: 250px; object-fit: contain;"
+              style="max-height: 280px; object-fit: contain;"
             >
 
-            <p class="mb-1">
-              <strong>Quantity:</strong> <%= product.quantity %>
-            </p>
-            <p class="mb-3">
-              <strong>Price:</strong> $<%= product.price.toFixed(2) %>
-            </p>
+            <p class="mb-2"><strong>Quantity:</strong> <%= product.quantity %></p>
+            <p class="mb-3"><strong>Price:</strong> $<%= product.price.toFixed(2) %></p>
 
             <div class="d-flex justify-content-center gap-2 mt-3">
               <% if (user.role === 'admin') { %>

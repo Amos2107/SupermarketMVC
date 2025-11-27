@@ -1,39 +1,59 @@
 <%- include('partials/header') %>
 <%- include('partials/navbar') %>
 
+<style>
+  .order-hero {
+    background: linear-gradient(135deg, #0d47a1, #0f6fde);
+    color: #fff;
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 12px 28px rgba(13, 71, 161, 0.18);
+  }
+</style>
+
 <div class="container py-4">
-  <h2 class="mb-4">Order #<%= order.id %></h2>
+  <div class="order-hero d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <p class="mb-1 text-uppercase small opacity-75">Order</p>
+      <h3 class="fw-bold mb-0">Order #<%= order.id %></h3>
+    </div>
+    <div class="text-end">
+      <div class="small opacity-75">Date</div>
+      <div><%= order.created_at.toDateString() %></div>
+    </div>
+  </div>
 
-  <p><strong>Date:</strong> <%= order.created_at.toDateString() %></p>
-  <p><strong>Total:</strong> $<%= Number(order.totalAmount).toFixed(2) %></p>
+  <div class="bg-white p-4 rounded-3 shadow-sm mb-3">
+    <div class="d-flex justify-content-between flex-wrap gap-2">
+      <span><strong>Total:</strong> $<%= Number(order.totalAmount).toFixed(2) %></span>
+      <span><strong>Customer:</strong> <%= order.username || '' %></span>
+    </div>
+  </div>
 
-  <h4 class="mt-4">Items</h4>
-
-  <table class="table table-bordered text-center">
-    <thead class="table-secondary">
-      <tr>
-        <th>Product</th>
-        <th>Image</th>
-        <th>Qty</th>
-        <th>Price ($)</th>
-        <th>Subtotal ($)</th>
-      </tr>
-    </thead>
-
-    <tbody>
-      <% items.forEach(item => { %>
+  <div class="table-responsive">
+    <table class="table table-hover bg-white shadow-sm align-middle text-center">
+      <thead class="table-light">
         <tr>
-          <td><%= item.productName %></td>
-          <td>
-            <img src="/images/<%= item.image %>" style="max-width:70px;">
-          </td>
-          <td><%= item.quantity %></td>
-          <td>$<%= Number(item.priceAtTime).toFixed(2) %></td>
-          <td>$<%= (item.priceAtTime * item.quantity).toFixed(2) %></td>
+          <th>Product</th>
+          <th>Image</th>
+          <th>Qty</th>
+          <th>Price ($)</th>
+          <th>Subtotal ($)</th>
         </tr>
-      <% }) %>
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+        <% items.forEach(item => { %>
+          <tr>
+            <td><%= item.productName %></td>
+            <td><img src="/images/<%= item.image %>" style="max-width:70px;"></td>
+            <td><%= item.quantity %></td>
+            <td>$<%= Number(item.priceAtTime).toFixed(2) %></td>
+            <td>$<%= (item.priceAtTime * item.quantity).toFixed(2) %></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
 
   <a href="/orders" class="btn btn-secondary">Back</a>
 </div>

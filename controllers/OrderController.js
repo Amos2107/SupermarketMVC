@@ -2,7 +2,7 @@ const db = require('../db');
 
 const OrderController = {
 
-  // ✅ USER — View their own orders
+  // USER � View their own orders
   myOrders(req, res) {
     const userId = req.session.user.id;
 
@@ -19,7 +19,7 @@ const OrderController = {
     );
   },
 
-  // ✅ ADMIN — View ALL orders
+  // ADMIN � View ALL orders
   adminOrders(req, res) {
     db.query(
       `SELECT o.id, o.total AS totalAmount, o.created_at, u.username
@@ -33,11 +33,11 @@ const OrderController = {
     );
   },
 
-  // ✅ CHECKOUT — Convert cart into an order
+  // CHECKOUT � Convert cart into an order
   checkout(req, res) {
     const userId = req.session.user.id;
 
-    // 1️⃣ Find active cart
+    // 1. Find active cart
     db.query(
       `SELECT id FROM cart
        WHERE userId = ? AND status = 'active'
@@ -53,56 +53,85 @@ const OrderController = {
 
         const cartId = result[0].id;
 
-        // 2️⃣ Calculate total
+        // 2a. Validate stock for each item before proceeding
         db.query(
-          `SELECT SUM(quantity * priceAtTime) AS total
-           FROM cart_items
-           WHERE cartId = ?`,
+          `SELECT ci.productId,
+                  ci.quantity    AS cartQty,
+                  p.quantity     AS stock,
+                  p.productName
+           FROM cart_items ci
+           JOIN products p ON ci.productId = p.id
+           WHERE ci.cartId = ?`,
           [cartId],
-          (err, totalResult) => {
-            if (err) throw err;
+          (stockErr, cartItems) => {
+            if (stockErr) throw stockErr;
 
-            const totalAmount = totalResult[0].total || 0;
+            if (!cartItems || cartItems.length === 0) {
+              req.flash('error', 'No items to checkout.');
+              return res.redirect('/cart');
+            }
 
-            // 3️⃣ Create order record
+            const insufficient = cartItems.find((item) => item.cartQty > item.stock);
+            if (insufficient) {
+              req.flash(
+                'error',
+                `Not enough stock for ${insufficient.productName}. Available: ${insufficient.stock}.`
+              );
+              return res.redirect('/cart');
+            }
+
+            // 2b. Calculate total
             db.query(
-              `INSERT INTO orders (userId, total)
-               VALUES (?, ?)`,
-              [userId, totalAmount],
-              (err, orderInsert) => {
+              `SELECT SUM(quantity * priceAtTime) AS total
+               FROM cart_items
+               WHERE cartId = ?`,
+              [cartId],
+              (err, totalResult) => {
                 if (err) throw err;
 
-                const orderId = orderInsert.insertId;
+                const totalAmount = totalResult[0].total || 0;
 
-                // 4️⃣ Copy items to order_items
+                // 3. Create order record
                 db.query(
-                  `INSERT INTO order_items (orderId, productId, quantity, priceAtTime)
-                   SELECT ?, productId, quantity, priceAtTime
-                   FROM cart_items
-                   WHERE cartId = ?`,
-                  [orderId, cartId],
-                  (err) => {
+                  `INSERT INTO orders (userId, total)
+                   VALUES (?, ?)`,
+                  [userId, totalAmount],
+                  (err, orderInsert) => {
                     if (err) throw err;
 
-                    // 5️⃣ Reduce inventory stock
+                    const orderId = orderInsert.insertId;
+
+                    // 4. Copy items to order_items
                     db.query(
-                      `UPDATE products p
-                       JOIN cart_items ci ON ci.productId = p.id
-                       SET p.quantity = GREATEST(p.quantity - ci.quantity, 0)
-                       WHERE ci.cartId = ?`,
-                      [cartId],
+                      `INSERT INTO order_items (orderId, productId, quantity, priceAtTime)
+                       SELECT ?, productId, quantity, priceAtTime
+                       FROM cart_items
+                       WHERE cartId = ?`,
+                      [orderId, cartId],
                       (err) => {
                         if (err) throw err;
 
-                        // 6️⃣ Mark cart as checked out
+                        // 5. Reduce inventory stock (after validation; no clamping)
                         db.query(
-                          `UPDATE cart SET status = 'checkedout'
-                           WHERE id = ?`,
-                          [cartId]
-                        );
+                          `UPDATE products p
+                           JOIN cart_items ci ON ci.productId = p.id
+                           SET p.quantity = p.quantity - ci.quantity
+                           WHERE ci.cartId = ?`,
+                          [cartId],
+                          (err) => {
+                            if (err) throw err;
 
-                        req.flash('success', 'Order placed successfully!');
-                        res.redirect(`/orders/${orderId}`);
+                            // 6. Mark cart as checked out
+                            db.query(
+                              `UPDATE cart SET status = 'checkedout'
+                               WHERE id = ?`,
+                              [cartId]
+                            );
+
+                            req.flash('success', 'Order placed successfully!');
+                            res.redirect(`/orders/${orderId}`);
+                          }
+                        );
                       }
                     );
                   }
@@ -115,7 +144,7 @@ const OrderController = {
     );
   },
 
-  // ✅ ORDER DETAILS PAGE
+  // ORDER DETAILS PAGE
   orderDetails(req, res) {
     const orderId = req.params.id;
 

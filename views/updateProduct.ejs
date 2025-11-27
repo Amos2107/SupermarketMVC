@@ -1,50 +1,56 @@
 <%- include('partials/header') %>
 <%- include('partials/navbar') %>
 
-<div class="container mt-4">
+<style>
+  .form-shell {
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 14px 32px rgba(13, 71, 161, 0.14);
+  }
+</style>
+
+<div class="container py-4">
   <div class="row justify-content-center">
     <div class="col-md-6 col-lg-5">
-      <div class="card shadow-sm border-0">
-        <div class="card-body p-4">
-          <h2 class="text-center mb-4">Update Product</h2>
+      <div class="form-shell p-4">
+        <h2 class="text-center mb-4 fw-bold text-primary">Update Product</h2>
 
-          <% if (product) { %>
-            <form action="/updateProduct/<%= product.id %>" method="POST" enctype="multipart/form-data">
-              <div class="mb-3">
-                <label for="name" class="form-label">Product Name</label>
-                <input type="text" class="form-control" id="name" name="name" value="<%= product.productName %>" required>
-              </div>
+        <% if (product) { %>
+          <form action="/updateProduct/<%= product.id %>" method="POST" enctype="multipart/form-data">
+            <div class="mb-3">
+              <label for="name" class="form-label">Product Name</label>
+              <input type="text" class="form-control" id="name" name="name" value="<%= product.productName %>" required>
+            </div>
 
-              <div class="mb-3">
-                <label for="quantity" class="form-label">Quantity</label>
-                <input type="number" class="form-control" id="quantity" name="quantity" min="0" step="1" value="<%= product.quantity %>" required>
-              </div>
+            <div class="mb-3">
+              <label for="quantity" class="form-label">Quantity</label>
+              <input type="number" class="form-control" id="quantity" name="quantity" min="0" step="1" value="<%= product.quantity %>" required>
+            </div>
 
-              <div class="mb-3">
-                <label for="price" class="form-label">Price ($)</label>
-                <input type="number" class="form-control" id="price" name="price" min="0" step="0.01" value="<%= product.price %>" required>
-              </div>
+            <div class="mb-3">
+              <label for="price" class="form-label">Price ($)</label>
+              <input type="number" class="form-control" id="price" name="price" min="0" step="0.01" value="<%= product.price %>" required>
+            </div>
 
-              <div class="mb-3">
-                <label class="form-label">Current Image</label>
-                <input type="text" class="form-control" name="currentImage" value="<%= product.image %>" readonly>
-                <img src="/images/<%= product.image %>" class="img-thumbnail mt-2" style="width: 150px;">
-              </div>
+            <div class="mb-3">
+              <label class="form-label">Current Image</label>
+              <input type="text" class="form-control" name="currentImage" value="<%= product.image %>" readonly>
+              <img src="/images/<%= product.image %>" class="img-thumbnail mt-2" style="width: 150px;">
+            </div>
 
-              <div class="mb-4">
-                <label for="image" class="form-label">Upload New Image</label>
-                <input class="form-control" type="file" id="image" name="image" accept="image/*">
-              </div>
+            <div class="mb-4">
+              <label for="image" class="form-label">Upload New Image</label>
+              <input class="form-control" type="file" id="image" name="image" accept="image/*">
+            </div>
 
-              <div class="d-grid gap-2">
-                <button type="submit" class="btn btn-primary">Update Product</button>
-                <a href="/inventory" class="btn btn-secondary">Back to Inventory</a>
-              </div>
-            </form>
-          <% } else { %>
-            <p class="text-center">No product found.</p>
-          <% } %>
-        </div>
+            <div class="d-grid gap-2">
+              <button type="submit" class="btn btn-primary">Update Product</button>
+              <a href="/inventory" class="btn btn-secondary">Back to Inventory</a>
+            </div>
+          </form>
+        <% } else { %>
+          <p class="text-center">No product found.</p>
+        <% } %>
       </div>
     </div>
   </div>

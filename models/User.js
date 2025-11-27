@@ -2,7 +2,7 @@ const db = require('../db');
 
 const User = {
   create(data, callback) {
-    const { username, email, password, address, contact, role } = data;
+    const { username, email, password, address, contact, role = 'user' } = data;
     const sql =
       'INSERT INTO users (username, email, password, address, contact, role) VALUES (?, ?, SHA1(?), ?, ?, ?)';
     db.query(sql, [username, email, password, address, contact, role], callback);

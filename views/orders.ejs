@@ -1,37 +1,55 @@
 <%- include('partials/header') %>
 <%- include('partials/navbar') %>
 
+<style>
+  .orders-hero {
+    background: linear-gradient(135deg, #0d47a1, #0f6fde);
+    color: #fff;
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 12px 28px rgba(13, 71, 161, 0.18);
+  }
+</style>
+
 <div class="container py-4">
-  <h2 class="mb-4">My Orders</h2>
+  <div class="orders-hero d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <p class="mb-1 text-uppercase small opacity-75">History</p>
+      <h3 class="fw-bold mb-0">My Orders</h3>
+    </div>
+    <a href="/shopping" class="btn btn-light text-primary fw-semibold">Keep Shopping</a>
+  </div>
 
   <% if (orders.length === 0) { %>
-    <p>You have no past orders.</p>
+    <div class="bg-white p-4 rounded-3 shadow-sm text-center">
+      <p class="mb-2">You have no past orders.</p>
+      <a href="/shopping" class="btn btn-primary">Start shopping</a>
+    </div>
   <% } else { %>
-
-  <table class="table table-bordered text-center">
-    <thead class="table-dark">
-      <tr>
-        <th>Order ID</th>
-        <th>Date</th>
-        <th>Total ($)</th>
-        <th>View</th>
-      </tr>
-    </thead>
-
-    <tbody>
-      <% orders.forEach(order => { %>
-        <tr>
-          <td><%= order.id %></td>
-          <td><%= order.created_at.toDateString() %></td>
-          <td>$<%= Number(order.totalAmount).toFixed(2) %></td>
-          <td>
-            <a href="/orders/<%= order.id %>" class="btn btn-primary btn-sm">Details</a>
-          </td>
-        </tr>
-      <% }) %>
-    </tbody>
-  </table>
-
+    <div class="table-responsive">
+      <table class="table table-hover bg-white shadow-sm align-middle">
+        <thead class="table-light text-center">
+          <tr>
+            <th>Order ID</th>
+            <th>Date</th>
+            <th>Total ($)</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% orders.forEach(order => { %>
+            <tr class="text-center">
+              <td>#<%= order.id %></td>
+              <td><%= order.created_at.toDateString() %></td>
+              <td>$<%= Number(order.totalAmount).toFixed(2) %></td>
+              <td>
+                <a href="/orders/<%= order.id %>" class="btn btn-outline-primary btn-sm">Details</a>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
   <% } %>
 </div>
 

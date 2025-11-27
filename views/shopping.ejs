@@ -1,41 +1,62 @@
 <%- include('partials/header') %>
 <%- include('partials/navbar') %>
 
-<div class="container py-4">
+<style>
+  .shop-hero {
+    background: linear-gradient(135deg, #0d47a1, #0f6fde);
+    border-radius: 18px;
+    padding: 28px;
+    color: #fff;
+    box-shadow: 0 15px 35px rgba(13, 71, 161, 0.18);
+  }
+  .product-card {
+    border-radius: 14px;
+    transition: 0.25s ease;
+    border: 1px solid rgba(13, 71, 161, 0.08);
+  }
+  .product-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 12px 24px rgba(0,0,0,0.12);
+  }
+  .product-image {
+    max-height: 160px;
+    object-fit: contain;
+  }
+</style>
 
-  <h2 class="mb-4 text-center">Start Shopping</h2>
+<div class="container py-4">
+  <div class="shop-hero mb-4 d-flex flex-wrap justify-content-between align-items-center gap-3">
+    <div>
+      <p class="mb-1 text-uppercase small opacity-75">Explore</p>
+      <h2 class="fw-bold mb-1">Start Shopping</h2>
+      <p class="mb-0">Browse fresh picks, add to cart, and checkout fast.</p>
+    </div>
+    <a href="/cart" class="btn btn-light text-primary fw-semibold">View Cart</a>
+  </div>
 
   <div class="row g-4">
     <% products.forEach(product => { %>
       <div class="col-12 col-sm-6 col-md-4 col-lg-3">
-
         <div class="card h-100 shadow-sm product-card">
-
-          <!-- Product Image -->
           <a href="/product/<%= product.id %>" class="text-center mt-3">
             <img 
               src="/images/<%= product.image %>" 
-              class="card-img-top img-fluid"
-              style="max-height: 160px; width: auto; object-fit: contain;"
+              class="card-img-top img-fluid product-image"
               alt="<%= product.productName %>"
+              onerror="this.src='/images/placeholder.png';"
             />
           </a>
 
           <div class="card-body d-flex flex-column">
-
-            <!-- Product Name -->
-            <h5 class="card-title fw-semibold">
+            <h6 class="card-title fw-semibold text-truncate mb-1" title="<%= product.productName %>">
               <%= product.productName %>
-            </h5>
-
-            <!-- Price -->
+            </h6>
             <p class="card-text fs-5 fw-bold text-primary mb-2">
               $<%= Number(product.price).toFixed(2) %>
             </p>
 
-            <!-- Quantity Selector -->
             <div class="mb-3">
-              <label class="form-label">Quantity</label>
+              <label class="form-label small text-muted">Quantity</label>
               <select name="quantity" class="form-select" form="addToCartForm-<%= product.id %>">
                 <% for (let q = 1; q <= 10; q++) { %>
                   <option value="<%= q %>"><%= q %></option>
@@ -43,36 +64,21 @@
               </select>
             </div>
 
-            <!-- Add to Cart -->
             <form 
               id="addToCartForm-<%= product.id %>" 
               action="/cart/add/<%= product.id %>" 
               method="POST" 
               class="mt-auto"
             >
-              <button type="submit" class="btn btn-outline-primary w-100">
-                🛒 Add to Cart
+              <button type="submit" class="btn btn-outline-primary w-100 fw-semibold">
+                Add to Cart
               </button>
             </form>
-
           </div>
         </div>
-
       </div>
     <% }) %>
   </div>
-
 </div>
-
-<style>
-  .product-card {
-    border-radius: 12px;
-    transition: 0.25s ease;
-  }
-  .product-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 8px 16px rgba(0,0,0,0.15);
-  }
-</style>
 
 <%- include('partials/footer') %>

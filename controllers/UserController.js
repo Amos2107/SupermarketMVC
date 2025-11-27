@@ -15,9 +15,9 @@ const UserController = {
   },
 
   register: (req, res) => {
-    const { username, email, password, address, contact, role } = req.body;
+    const { username, email, password, address, contact } = req.body;
 
-    User.create({ username, email, password, address, contact, role }, (err) => {
+    User.create({ username, email, password, address, contact, role: 'user' }, (err) => {
       if (err) {
         console.error(err);
         req.flash('error', 'Registration failed.');

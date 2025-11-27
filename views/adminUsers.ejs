@@ -1,0 +1,54 @@
+<%- include('partials/header') %>
+<%- include('partials/navbar') %>
+
+<div class="container mt-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>User Management</h2>
+    <span class="text-muted">Admin only</span>
+  </div>
+
+  <% if (messages && messages.success && messages.success.length) { %>
+    <div class="alert alert-success"><%= messages.success[0] %></div>
+  <% } %>
+  <% if (messages && messages.error && messages.error.length) { %>
+    <div class="alert alert-danger"><%= messages.error[0] %></div>
+  <% } %>
+
+  <div class="table-responsive">
+    <table class="table table-striped align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>ID</th>
+          <th>Username</th>
+          <th>Email</th>
+          <th>Role</th>
+          <th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% users.forEach(function(user) { %>
+          <tr>
+            <td><%= user.id %></td>
+            <td><%= user.username %></td>
+            <td><%= user.email %></td>
+            <td><span class="badge <%= user.role === 'admin' ? 'bg-primary' : 'bg-secondary' %>"><%= user.role %></span></td>
+            <td class="text-end">
+              <% if (user.role !== 'admin') { %>
+                <form action="/admin/users/<%= user.id %>/make-admin" method="POST" class="d-inline">
+                  <button type="submit" class="btn btn-sm btn-outline-primary">Make Admin</button>
+                </form>
+              <% } %>
+              <% if (!currentUser || currentUser.id !== user.id) { %>
+                <form action="/admin/users/<%= user.id %>/delete" method="POST" class="d-inline ms-1">
+                  <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete this user and all their transactions?');">Delete</button>
+                </form>
+              <% } %>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<%- include('partials/footer') %>

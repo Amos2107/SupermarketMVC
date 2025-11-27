@@ -1,0 +1,92 @@
+<%- include('partials/header') %>
+<%- include('partials/navbar') %>
+
+<div class="container mt-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Inventory Health</h2>
+    <span class="text-muted">Admin only</span>
+  </div>
+
+  <% if (messages && messages.success && messages.success.length) { %>
+    <div class="alert alert-success"><%= messages.success[0] %></div>
+  <% } %>
+  <% if (messages && messages.error && messages.error.length) { %>
+    <div class="alert alert-danger"><%= messages.error[0] %></div>
+  <% } %>
+
+  <div class="row g-4">
+    <div class="col-lg-6">
+      <div class="card shadow-sm">
+        <div class="card-header bg-warning bg-opacity-25">
+          <strong>Low Stock (<= 10)</strong>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table mb-0 align-middle">
+              <thead class="table-light">
+                <tr>
+                  <th>Name</th>
+                  <th>Quantity</th>
+                  <th class="text-end">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% if (!lowStock || lowStock.length === 0) { %>
+                  <tr><td colspan="3" class="text-center text-muted py-3">No low-stock items 🎉</td></tr>
+                <% } else { %>
+                  <% lowStock.forEach(function(item) { %>
+                    <tr>
+                      <td><%= item.productName %></td>
+                      <td><span class="badge bg-warning text-dark"><%= item.quantity %></span></td>
+                      <td class="text-end">
+                        <a class="btn btn-sm btn-outline-primary" href="/updateProduct/<%= item.id %>">Update</a>
+                      </td>
+                    </tr>
+                  <% }); %>
+                <% } %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-6">
+      <div class="card shadow-sm">
+        <div class="card-header bg-success bg-opacity-25">
+          <strong>Top Selling</strong>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table mb-0 align-middle">
+              <thead class="table-light">
+                <tr>
+                  <th>Name</th>
+                  <th>Sold</th>
+                  <th class="text-end">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% if (!topSelling || topSelling.length === 0) { %>
+                  <tr><td colspan="3" class="text-center text-muted py-3">No sales data yet.</td></tr>
+                <% } else { %>
+                  <% topSelling.forEach(function(item) { %>
+                    <tr>
+                      <td><%= item.productName %></td>
+                      <td><span class="badge bg-success"><%= item.sold %></span></td>
+                      <td class="text-end">
+                        <a class="btn btn-sm btn-outline-primary" href="/updateProduct/<%= item.id %>">Update</a>
+                      </td>
+                    </tr>
+                  <% }); %>
+                <% } %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%- include('partials/footer') %>

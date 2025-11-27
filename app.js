@@ -39,11 +39,13 @@ const authRoutes = require('./routes/authRoutes');
 const productRoutes = require('./routes/productRoutes');
 const cartRoutes = require('./routes/cartRoutes');
 const orderRoutes = require('./routes/orderRoutes');
+const adminRoutes = require('./routes/adminRoutes');
 
 app.use('/', authRoutes);
 app.use('/', productRoutes);
 app.use('/cart', cartRoutes);
 app.use('/', orderRoutes);
+app.use('/', adminRoutes);
 
 // Start server
 const PORT = process.env.PORT || 3000;
