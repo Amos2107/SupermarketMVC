@@ -12,6 +12,15 @@
 </style>
 
 <div class="container py-4">
+  <div class="breadcrumb-bar mb-3">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a href="/">Home</a></li>
+        <li class="breadcrumb-item active" aria-current="page">My Orders</li>
+      </ol>
+    </nav>
+  </div>
+
   <div class="orders-hero d-flex justify-content-between align-items-center mb-4">
     <div>
       <p class="mb-1 text-uppercase small opacity-75">History</p>
@@ -27,7 +36,7 @@
     </div>
   <% } else { %>
     <div class="table-responsive">
-      <table class="table table-hover bg-white shadow-sm align-middle">
+      <table class="table table-hover table-sticky bg-white shadow-sm align-middle">
         <thead class="table-light text-center">
           <tr>
             <th>Order ID</th>

@@ -27,6 +27,7 @@ app.use(flash());
 // Global locals for all views
 app.use((req, res, next) => {
   res.locals.currentUser = req.session.user;
+  res.locals.currentPath = req.path;
   res.locals.messages = {
     success: req.flash('success'),
     error: req.flash('error')

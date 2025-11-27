@@ -13,9 +13,36 @@ const ProductController = {
   },
 
   showInventory: (req, res) => {
-    db.query('SELECT * FROM products', (err, results) => {
+    const threshold = 10;
+
+    db.query('SELECT * FROM products', (err, products) => {
       if (err) throw err;
-      res.render('inventory', { products: results, user: req.session.user });
+
+      db.query(
+        'SELECT id, productName, quantity FROM products WHERE quantity <= ? ORDER BY quantity ASC LIMIT 10',
+        [threshold],
+        (err2, lowStock) => {
+          if (err2) throw err2;
+
+          db.query(
+            `SELECT p.id, p.productName, p.quantity AS stock, COALESCE(SUM(oi.quantity), 0) AS sold
+             FROM products p
+             LEFT JOIN order_items oi ON oi.productId = p.id
+             GROUP BY p.id, p.productName, p.quantity
+             ORDER BY sold DESC
+             LIMIT 10`,
+            (err3, topSelling) => {
+              if (err3) throw err3;
+              res.render('inventory', {
+                products,
+                lowStock,
+                topSelling,
+                user: req.session.user
+              });
+            }
+          );
+        }
+      );
     });
   },
 

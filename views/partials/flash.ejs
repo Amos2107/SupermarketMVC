@@ -1,0 +1,15 @@
+<%
+  const flash = (typeof messages !== 'undefined' && messages) || (typeof locals !== 'undefined' && locals.messages) || {};
+%>
+<div class="container mt-3">
+  <% if (flash.success && flash.success.length) { %>
+    <div class="alert alert-success shadow-sm mb-2">
+      <%= flash.success[0] %>
+    </div>
+  <% } %>
+  <% if (flash.error && flash.error.length) { %>
+    <div class="alert alert-danger shadow-sm mb-2">
+      <%= flash.error[0] %>
+    </div>
+  <% } %>
+</div>
