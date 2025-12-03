@@ -133,35 +133,65 @@ const AdminController = {
   inventoryHealth(req, res) {
     const threshold = 10; // static threshold for low stock; can be made configurable
 
+    // Fetch KPIs, then low stock, out of stock, and top selling lists
     db.query(
-      'SELECT id, productName, quantity FROM products WHERE quantity <= ? ORDER BY quantity ASC LIMIT 20',
+      `SELECT COUNT(*) AS totalSkus,
+              SUM(quantity <= ?) AS lowCount,
+              SUM(quantity = 0) AS oosCount,
+              SUM(quantity) AS totalUnits
+       FROM products`,
       [threshold],
-      (err, lowStock) => {
-        if (err) {
-          console.error(err);
-          req.flash('error', 'Unable to load low stock data.');
+      (metaErr, kpiRows) => {
+        if (metaErr) {
+          console.error(metaErr);
+          req.flash('error', 'Unable to load inventory KPIs.');
           return res.redirect('/');
         }
 
         db.query(
-          `SELECT p.id, p.productName, COALESCE(SUM(oi.quantity), 0) AS sold
-           FROM products p
-           LEFT JOIN order_items oi ON oi.productId = p.id
-           GROUP BY p.id, p.productName
-           ORDER BY sold DESC
-           LIMIT 20`,
-          (err2, topSelling) => {
-            if (err2) {
-              console.error(err2);
-              req.flash('error', 'Unable to load sales data.');
+          'SELECT id, productName, quantity FROM products WHERE quantity <= ? ORDER BY quantity ASC LIMIT 20',
+          [threshold],
+          (lowErr, lowStock) => {
+            if (lowErr) {
+              console.error(lowErr);
+              req.flash('error', 'Unable to load low stock data.');
               return res.redirect('/');
             }
 
-            res.render('adminInventoryHealth', {
-              lowStock,
-              topSelling,
-              messages: res.locals.messages
-            });
+            db.query(
+              'SELECT id, productName, quantity FROM products WHERE quantity = 0 ORDER BY productName ASC LIMIT 20',
+              (oosErr, outOfStock) => {
+                if (oosErr) {
+                  console.error(oosErr);
+                  req.flash('error', 'Unable to load out-of-stock data.');
+                  return res.redirect('/');
+                }
+
+                db.query(
+                  `SELECT p.id, p.productName, COALESCE(SUM(oi.quantity), 0) AS sold
+                   FROM products p
+                   LEFT JOIN order_items oi ON oi.productId = p.id
+                   GROUP BY p.id, p.productName
+                   ORDER BY sold DESC
+                   LIMIT 20`,
+                  (err2, topSelling) => {
+                    if (err2) {
+                      console.error(err2);
+                      req.flash('error', 'Unable to load sales data.');
+                      return res.redirect('/');
+                    }
+
+                    res.render('adminInventoryHealth', {
+                      kpis: kpiRows && kpiRows[0],
+                      lowStock,
+                      outOfStock,
+                      topSelling,
+                      messages: res.locals.messages
+                    });
+                  }
+                );
+              }
+            );
           }
         );
       }

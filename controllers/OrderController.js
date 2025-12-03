@@ -1,8 +1,8 @@
-const db = require('../db');
+ï»¿const db = require('../db');
 
 const OrderController = {
 
-  // USER – View their own orders
+  // USER - View their own orders
   myOrders(req, res) {
     const userId = req.session.user.id;
 
@@ -19,7 +19,7 @@ const OrderController = {
     );
   },
 
-  // ADMIN – View ALL orders
+  // ADMIN - View ALL orders
   adminOrders(req, res) {
     db.query(
       `SELECT o.id, o.total AS totalAmount, o.created_at, u.username
@@ -33,7 +33,7 @@ const OrderController = {
     );
   },
 
-  // CHECKOUT – Convert cart into an order
+  // CHECKOUT - Convert cart into an order
   checkout(req, res) {
     const userId = req.session.user.id;
 
@@ -94,7 +94,8 @@ const OrderController = {
                 // 3. Create order record
                 db.query(
                   `INSERT INTO orders (userId, total)
-                   VALUES (?, ?)`,
+                   VALUES (?, ?)`
+                 ,
                   [userId, totalAmount],
                   (err, orderInsert) => {
                     if (err) throw err;
@@ -158,9 +159,12 @@ const OrderController = {
         if (err) throw err;
 
         db.query(
-          `SELECT oi.quantity, oi.priceAtTime, p.productName, p.image
+          `SELECT oi.quantity,
+                  oi.priceAtTime,
+                  COALESCE(p.productName, CONCAT('Product #', oi.productId, ' (deleted)')) AS productName,
+                  COALESCE(p.image, 'placeholder.png') AS image
            FROM order_items oi
-           JOIN products p ON oi.productId = p.id
+           LEFT JOIN products p ON oi.productId = p.id
            WHERE oi.orderId = ?`,
           [orderId],
           (err, items) => {
