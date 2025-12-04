@@ -23,6 +23,11 @@
     <div class="alert alert-danger"><%= messages.error[0] %></div>
   <% } %>
 
+  <div class="search-row mb-3">
+    <label for="userSearch" class="form-label mb-1 text-muted small">Search users</label>
+    <input id="userSearch" type="search" class="form-control" placeholder="Search by username or email..." aria-label="Search users">
+  </div>
+
   <div class="table-responsive">
     <table class="table table-striped table-sticky align-middle">
       <thead class="table-light">
@@ -36,7 +41,7 @@
       </thead>
       <tbody>
         <% users.forEach(function(user) { %>
-          <tr>
+          <tr class="user-row" data-name="<%= (user.username || '').toLowerCase() %>" data-email="<%= (user.email || '').toLowerCase() %>">
             <td><%= user.id %></td>
             <td><%= user.username %></td>
             <td><%= user.email %></td>
@@ -55,9 +60,41 @@
             </td>
           </tr>
         <% }) %>
+        <tr id="userNoResults" class="text-center text-muted" style="display:none;">
+          <td colspan="5">No users match your search.</td>
+        </tr>
       </tbody>
     </table>
   </div>
 </div>
+
+<script>
+  (function() {
+    const searchInput = document.getElementById('userSearch');
+    const rows = Array.from(document.querySelectorAll('.user-row'));
+    const noResults = document.getElementById('userNoResults');
+
+    const filter = () => {
+      const term = (searchInput?.value || '').trim().toLowerCase();
+      let visible = 0;
+      rows.forEach((row) => {
+        const name = row.dataset.name || '';
+        const email = row.dataset.email || '';
+        const show = !term || name.includes(term) || email.includes(term);
+        row.style.display = show ? '' : 'none';
+        if (show) visible += 1;
+      });
+      if (noResults) noResults.style.display = visible === 0 ? '' : 'none';
+    };
+
+    if (searchInput) {
+      let debounce;
+      searchInput.addEventListener('input', () => {
+        clearTimeout(debounce);
+        debounce = setTimeout(filter, 100);
+      });
+    }
+  })();
+</script>
 
 <%- include('partials/footer') %>

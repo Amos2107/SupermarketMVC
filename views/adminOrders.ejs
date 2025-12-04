@@ -4,6 +4,11 @@
 <div class="container py-4">
   <h2 class="mb-4">All Orders</h2>
 
+  <div class="search-row mb-3">
+    <label for="orderSearch" class="form-label mb-1 text-muted small">Search orders</label>
+    <input id="orderSearch" type="search" class="form-control" placeholder="Search by user or order ID..." aria-label="Search orders">
+  </div>
+
   <table class="table table-bordered text-center">
     <thead class="table-dark">
       <tr>
@@ -17,7 +22,7 @@
 
     <tbody>
       <% orders.forEach(order => { %>
-        <tr>
+        <tr class="order-row" data-id="<%= String(order.id).toLowerCase() %>" data-user="<%= (order.username || '').toLowerCase() %>">
           <td><%= order.id %></td>
           <td><%= order.username %></td>
           <td><%= order.created_at.toDateString() %></td>
@@ -27,8 +32,42 @@
           </td>
         </tr>
       <% }) %>
+      <tr id="ordersNoResults" class="text-center text-muted" style="display:none;">
+        <td colspan="5">No orders match your search.</td>
+      </tr>
     </tbody>
   </table>
 </div>
+
+<script>
+  (function() {
+    const searchInput = document.getElementById('orderSearch');
+    const rows = Array.from(document.querySelectorAll('.order-row'));
+    const noResults = document.getElementById('ordersNoResults');
+
+    const filter = () => {
+      const term = (searchInput?.value || '').trim().toLowerCase();
+      let visible = 0;
+
+      rows.forEach((row) => {
+        const id = row.dataset.id || '';
+        const user = row.dataset.user || '';
+        const show = !term || id.includes(term) || user.includes(term);
+        row.style.display = show ? '' : 'none';
+        if (show) visible += 1;
+      });
+
+      if (noResults) noResults.style.display = visible === 0 ? '' : 'none';
+    };
+
+    if (searchInput) {
+      let debounce;
+      searchInput.addEventListener('input', () => {
+        clearTimeout(debounce);
+        debounce = setTimeout(filter, 100);
+      });
+    }
+  })();
+</script>
 
 <%- include('partials/footer') %>
