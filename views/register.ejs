@@ -39,6 +39,24 @@
     border-color: var(--primary);
     box-shadow: 0 0 0 3px rgba(26, 166, 160, 0.15);
   }
+  .auth-illustration {
+    background: radial-gradient(circle at 25% 20%, rgba(13, 71, 161, 0.08), transparent 38%),
+                radial-gradient(circle at 80% 40%, rgba(26, 166, 160, 0.12), transparent 34%),
+                rgba(255, 255, 255, 0.8);
+    border-radius: 14px;
+    box-shadow: 0 14px 32px rgba(13, 71, 161, 0.12);
+    padding: 12px;
+    min-height: 260px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .auth-illustration img {
+    width: 100%;
+    height: 100%;
+    border-radius: 10px;
+    object-fit: cover;
+  }
 </style>
 
 <div class="auth-hero">
@@ -47,16 +65,19 @@
       <div class="col-lg-8">
         <div class="auth-card">
           <div class="row g-0">
-            <div class="col-md-5 auth-side p-4 d-flex flex-column justify-content-between">
+            <div class="col-md-5 auth-side p-4 d-flex flex-column justify-content-center gap-4">
               <div>
                 <p class="mb-1 text-uppercase small opacity-75">Create account</p>
                 <h3 class="fw-bold">Join AmosMart</h3>
                 <p class="small opacity-75">Shop seamlessly and track your orders in one place.</p>
               </div>
+              <div class="auth-illustration">
+                <img src="/images/supermarket(1).jpg" alt="Grocery aisles at AmosMart" loading="lazy">
+              </div>
             </div>
 
             <div class="col-md-7 p-4">
-              <h5 class="fw-semibold mb-3 text-primary">Register</h5>
+              <h5 class="fw-semibold mb-3 text-primary text-center">Registeration</h5>
 
               <% if (messages && messages.length > 0) { %>
                 <div class="alert alert-danger">
