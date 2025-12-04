@@ -1,4 +1,4 @@
-<nav class="navbar navbar-expand-lg navbar-dark" style="background-color: #0d47a1;">
+<nav class="navbar navbar-expand-lg navbar-dark">
   <div class="container">
     <a class="navbar-brand fw-bold" href="/">AmosMart</a>
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#amosNavbar">
@@ -40,10 +40,6 @@
 
           <% } %>
 
-          <li class="nav-item">
-            <a class="nav-link <%= currentPath.startsWith('/cart') ? 'active' : '' %>" href="/cart">Cart</a>
-          </li>
-
         <% } else { %>
 
           <li class="nav-item">
@@ -54,7 +50,7 @@
 
       </ul>
 
-      <ul class="navbar-nav">
+      <ul class="navbar-nav align-items-lg-center gap-2">
         <% if (!currentUser) { %>
 
           <li class="nav-item">
@@ -68,9 +64,20 @@
         <% } else { %>
 
           <li class="nav-item">
-            <span class="navbar-text me-3">
-              Hi, <strong><%= currentUser.username %></strong> (<%= currentUser.role %>)
-            </span>
+            <a class="cart-pill text-decoration-none" href="/cart" aria-label="Go to cart">
+              <span aria-hidden="true">🛒</span>
+              <span class="fw-semibold">Cart</span>
+            </a>
+          </li>
+
+          <li class="nav-item d-flex align-items-center">
+            <span class="navbar-text me-2 text-white-75">Hi,</span>
+            <div class="d-flex align-items-center gap-2">
+              <div class="d-flex flex-column lh-sm">
+                <strong class="text-white"><%= currentUser.username %></strong>
+                <small class="text-white-50 text-uppercase"><%= currentUser.role %></small>
+              </div>
+            </div>
           </li>
 
           <li class="nav-item">

@@ -1,24 +1,6 @@
 <%- include('partials/header') %>
 <%- include('partials/navbar') %>
 
-<style>
-  .cart-hero {
-    background: linear-gradient(135deg, #0d47a1, #0f6fde);
-    border-radius: 16px;
-    padding: 24px;
-    color: #fff;
-    box-shadow: 0 12px 28px rgba(13, 71, 161, 0.18);
-  }
-  .cart-table thead {
-    background: rgba(13, 71, 161, 0.12);
-  }
-  .cart-summary {
-    background: #fff;
-    border-radius: 12px;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.08);
-  }
-</style>
-
 <div class="container py-4">
   <div class="breadcrumb-bar mb-3">
     <nav aria-label="breadcrumb">
@@ -36,14 +18,18 @@
     <a href="/shopping" class="btn btn-light text-primary fw-semibold">Back to Shopping</a>
   </div>
 
-  <% if (cart.length === 0) { %>
-    <div class="text-center py-4 bg-white rounded-3 shadow-sm">
-      <p class="mb-2">Your cart is empty.</p>
-      <a href="/shopping" class="btn btn-primary">Start shopping</a>
-    </div>
-  <% } else { %>
-    <div class="row g-4">
-      <div class="col-lg-8">
+<% if (cart.length === 0) { %>
+  <div class="text-center py-4 bg-white rounded-3 shadow-sm">
+    <p class="mb-2">Your cart is empty.</p>
+    <a href="/shopping" class="btn btn-primary">Start shopping</a>
+  </div>
+<% } else { %>
+  <div class="row g-4">
+    <div class="col-lg-8">
+      <div class="search-row mb-3">
+        <label for="cartSearch" class="form-label mb-1 text-muted small">Search in cart</label>
+        <input id="cartSearch" type="search" class="form-control" placeholder="Search by product name..." aria-label="Search cart items">
+      </div>
         <div class="table-responsive cart-table">
           <table class="table table-sticky align-middle bg-white shadow-sm">
             <thead class="text-center">
@@ -60,7 +46,7 @@
               <% let total = 0; %>
               <% cart.forEach(item => { %>
                 <% total += item.priceAtTime * item.quantity; %>
-                <tr class="text-center">
+                <tr class="text-center cart-row" data-name="<%= item.productName.toLowerCase() %>" data-qty="<%= item.quantity %>" data-price="<%= item.priceAtTime %>">
                   <td><%= item.productName %></td>
                   <td><img src="/images/<%= item.image %>" class="img-thumbnail" style="max-width: 70px;"></td>
                   <td>$<%= Number(item.priceAtTime).toFixed(2) %></td>
@@ -82,6 +68,9 @@
                   </td>
                 </tr>
               <% }) %>
+              <tr id="cartNoResults" class="text-center text-muted" style="display:none;">
+                <td colspan="6">No items match your search.</td>
+              </tr>
             </tbody>
           </table>
         </div>
@@ -92,16 +81,16 @@
           <h5 class="fw-semibold mb-3">Order Summary</h5>
           <div class="d-flex justify-content-between mb-2">
             <span>Items</span>
-            <span><%= cart.length %></span>
+            <span id="cartCount"><%= cart.length %></span>
           </div>
           <div class="d-flex justify-content-between mb-2">
             <span>Subtotal</span>
-            <strong>$<%= total.toFixed(2) %></strong>
+            <strong id="cartSubtotal">$<%= total.toFixed(2) %></strong>
           </div>
           <hr>
           <div class="d-flex justify-content-between align-items-center mb-3">
             <span class="fw-semibold">Total</span>
-            <h4 class="mb-0 text-primary">$<%= total.toFixed(2) %></h4>
+            <h4 class="mb-0 text-primary" id="cartTotal">$<%= total.toFixed(2) %></h4>
           </div>
           <div class="d-grid gap-2">
             <form action="/checkout" method="POST" class="d-grid">
@@ -113,8 +102,40 @@
           </div>
         </div>
       </div>
-    </div>
-  <% } %>
+  </div>
+<% } %>
 </div>
+
+<script>
+  (function() {
+    const searchInput = document.getElementById('cartSearch');
+    const rows = Array.from(document.querySelectorAll('.cart-row'));
+    const noResultsRow = document.getElementById('cartNoResults');
+
+    const filterRows = () => {
+      const term = (searchInput?.value || '').trim().toLowerCase();
+      let visibleCount = 0;
+
+      rows.forEach((row) => {
+        const name = row.dataset.name || '';
+        const show = !term || name.includes(term);
+        row.style.display = show ? '' : 'none';
+        if (show) visibleCount += 1;
+      });
+
+      if (noResultsRow) noResultsRow.style.display = visibleCount === 0 ? '' : 'none';
+    };
+
+    if (searchInput) {
+      let debounce;
+      searchInput.addEventListener('input', () => {
+        clearTimeout(debounce);
+        debounce = setTimeout(filterRows, 100);
+      });
+    }
+
+    filterRows();
+  })();
+</script>
 
 <%- include('partials/footer') %>
