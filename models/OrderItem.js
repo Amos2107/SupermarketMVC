@@ -21,6 +21,20 @@ const OrderItem = {
       [orderId],
       callback
     );
+  },
+
+  findDetailsByOrder(orderId, callback) {
+    db.query(
+      `SELECT oi.quantity,
+              oi.priceAtTime,
+              COALESCE(p.productName, CONCAT('Product #', oi.productId, ' (deleted)')) AS productName,
+              COALESCE(p.image, 'placeholder.png') AS image
+       FROM order_items oi
+       LEFT JOIN products p ON oi.productId = p.id
+       WHERE oi.orderId = ?`,
+      [orderId],
+      callback
+    );
   }
 };
 

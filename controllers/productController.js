@@ -1,4 +1,4 @@
-const db = require('../db');
+const Product = require('../models/Product');
 
 const ProductController = {
   showHome: (req, res) => {
@@ -6,8 +6,11 @@ const ProductController = {
   },
 
   showShopping: (req, res) => {
-    db.query('SELECT * FROM products', (err, results) => {
-      if (err) throw err;
+    Product.findAll((err, results) => {
+      if (err) {
+        console.error(err);
+        return res.status(500).send('Error loading products');
+      }
       res.render('shopping', { products: results, user: req.session.user });
     });
   },
@@ -15,42 +18,43 @@ const ProductController = {
   showInventory: (req, res) => {
     const threshold = 10;
 
-    db.query('SELECT * FROM products', (err, products) => {
-      if (err) throw err;
+    Product.findAll((err, products) => {
+      if (err) {
+        console.error(err);
+        return res.status(500).send('Error loading products');
+      }
 
-      db.query(
-        'SELECT id, productName, quantity FROM products WHERE quantity <= ? ORDER BY quantity ASC LIMIT 10',
-        [threshold],
-        (err2, lowStock) => {
-          if (err2) throw err2;
-
-          db.query(
-            `SELECT p.id, p.productName, p.quantity AS stock, COALESCE(SUM(oi.quantity), 0) AS sold
-             FROM products p
-             LEFT JOIN order_items oi ON oi.productId = p.id
-             GROUP BY p.id, p.productName, p.quantity
-             ORDER BY sold DESC
-             LIMIT 10`,
-            (err3, topSelling) => {
-              if (err3) throw err3;
-              res.render('inventory', {
-                products,
-                lowStock,
-                topSelling,
-                user: req.session.user
-              });
-            }
-          );
+      Product.findLowStock(threshold, 10, (errLow, lowStock) => {
+        if (errLow) {
+          console.error(errLow);
+          return res.status(500).send('Error loading low stock data');
         }
-      );
+
+        Product.findTopSelling(10, (errTop, topSelling) => {
+          if (errTop) {
+            console.error(errTop);
+            return res.status(500).send('Error loading top selling data');
+          }
+
+          res.render('inventory', {
+            products,
+            lowStock,
+            topSelling,
+            user: req.session.user
+          });
+        });
+      });
     });
   },
 
   showProductDetails: (req, res) => {
     const id = req.params.id;
-    db.query('SELECT * FROM products WHERE id = ?', [id], (err, results) => {
-      if (err) throw err;
-      if (results.length === 0) return res.status(404).send('Product not found');
+    Product.findById(id, (err, results) => {
+      if (err) {
+        console.error(err);
+        return res.status(500).send('Error loading product');
+      }
+      if (!results || results.length === 0) return res.status(404).send('Product not found');
       res.render('product', { product: results[0], user: req.session.user });
     });
   },
@@ -63,25 +67,24 @@ const ProductController = {
     const { name, quantity, price } = req.body;
     const image = req.file ? req.file.filename : null;
 
-    db.query(
-      'INSERT INTO products (productName, quantity, price, image) VALUES (?, ?, ?, ?)',
-      [name, quantity, price, image],
-      (err) => {
-        if (err) {
-          console.error(err);
-          return res.status(500).send('Error adding product');
-        }
-        req.flash('success', 'Product added successfully');
-        res.redirect('/inventory');
+    Product.create({ name, quantity, price, image }, (err) => {
+      if (err) {
+        console.error(err);
+        return res.status(500).send('Error adding product');
       }
-    );
+      req.flash('success', 'Product added successfully');
+      res.redirect('/inventory');
+    });
   },
 
   showUpdateProductForm: (req, res) => {
     const id = req.params.id;
-    db.query('SELECT * FROM products WHERE id = ?', [id], (err, results) => {
-      if (err) throw err;
-      if (results.length === 0) return res.status(404).send('Product not found');
+    Product.findById(id, (err, results) => {
+      if (err) {
+        console.error(err);
+        return res.status(500).send('Error loading product');
+      }
+      if (!results || results.length === 0) return res.status(404).send('Product not found');
       res.render('updateProduct', { product: results[0], user: req.session.user });
     });
   },
@@ -92,26 +95,33 @@ const ProductController = {
     let image = req.body.currentImage;
     if (req.file) image = req.file.filename;
 
-    db.query(
-      'UPDATE products SET productName = ?, quantity = ?, price = ?, image = ? WHERE id = ?',
-      [name, quantity, price, image, id],
-      (err) => {
-        if (err) {
-          console.error(err);
-          return res.status(500).send('Error updating product');
-        }
-        req.flash('success', 'Product updated successfully');
-        res.redirect('/inventory');
+    Product.update(id, { name, quantity, price, image }, (err) => {
+      if (err) {
+        console.error(err);
+        return res.status(500).send('Error updating product');
       }
-    );
+      req.flash('success', 'Product updated successfully');
+      res.redirect('/inventory');
+    });
   },
 
   deleteProduct: (req, res) => {
     const id = req.params.id;
-    db.query('DELETE FROM products WHERE id = ?', [id], (err) => {
+    Product.delete(id, (err) => {
       if (err) {
         console.error(err);
-        return res.status(500).send('Error deleting product');
+
+        // Foreign key protection: product is referenced by existing order/invoice items
+        if (err.code === 'ER_ROW_IS_REFERENCED_2' || err.code === 'ER_ROW_IS_REFERENCED') {
+          req.flash(
+            'error',
+            'Cannot delete this product because an old invoice/order still references it. Remove those records first.'
+          );
+          return res.redirect('/inventory');
+        }
+
+        req.flash('error', 'Error deleting product');
+        return res.redirect('/inventory');
       }
       req.flash('success', 'Product deleted');
       res.redirect('/inventory');
