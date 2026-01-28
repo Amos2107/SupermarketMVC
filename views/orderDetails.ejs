@@ -37,7 +37,16 @@
     <div class="d-flex justify-content-between flex-wrap gap-2">
       <span><strong>Total:</strong> $<%= Number(order.totalAmount).toFixed(2) %></span>
       <span><strong>Customer:</strong> <%= order.username || '' %></span>
+      <span><strong>Status:</strong> <%= order.status || 'Pending' %></span>
     </div>
+    <% if ((String(order.status || '')).toLowerCase() !== 'paid') { %>
+      <div class="mt-3 d-flex gap-2 flex-wrap">
+        <a class="btn btn-primary" href="/orders/<%= order.id %>/pay">Pay Now</a>
+        <span class="text-muted small align-self-center">Payment method: <%= order.payment_method || '-' %></span>
+      </div>
+    <% } else { %>
+      <div class="mt-3 text-muted small">Paid at: <%= order.paid_at ? new Date(order.paid_at).toLocaleString() : '-' %></div>
+    <% } %>
   </div>
 
   <div class="table-responsive">

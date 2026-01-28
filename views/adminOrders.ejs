@@ -16,24 +16,29 @@
         <th>User</th>
         <th>Date</th>
         <th>Total ($)</th>
+        <th>Status</th>
         <th>View</th>
       </tr>
     </thead>
 
     <tbody>
       <% orders.forEach(order => { %>
+        <% const statusText = (order.status || 'Pending'); %>
+        <% const statusLower = String(statusText).toLowerCase(); %>
+        <% const statusBadgeClass = statusLower === 'paid' ? 'text-bg-success' : 'text-bg-warning'; %>
         <tr class="order-row" data-id="<%= String(order.id).toLowerCase() %>" data-user="<%= (order.username || '').toLowerCase() %>">
           <td><%= order.id %></td>
           <td><%= order.username %></td>
           <td><%= order.created_at.toDateString() %></td>
           <td>$<%= Number(order.totalAmount).toFixed(2) %></td>
+          <td><span class="badge <%= statusBadgeClass %>"><%= statusText %></span></td>
           <td>
             <a href="/orders/<%= order.id %>" class="btn btn-primary btn-sm">Details</a>
           </td>
         </tr>
       <% }) %>
       <tr id="ordersNoResults" class="text-center text-muted" style="display:none;">
-        <td colspan="5">No orders match your search.</td>
+        <td colspan="6">No orders match your search.</td>
       </tr>
     </tbody>
   </table>

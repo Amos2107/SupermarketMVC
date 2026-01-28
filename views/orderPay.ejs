@@ -1,0 +1,268 @@
+<%- include('partials/header') %>
+<%- include('partials/navbar') %>
+
+<%
+  const subtotal = Number(order.totalAmount) || 0;
+  const payable = subtotal;
+%>
+
+<div class="container py-4">
+  <div class="breadcrumb-bar mb-3">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a href="/">Home</a></li>
+        <li class="breadcrumb-item"><a href="/orders">My Orders</a></li>
+        <li class="breadcrumb-item"><a href="/orders/<%= order.id %>">#<%= order.id %></a></li>
+        <li class="breadcrumb-item active" aria-current="page">Pay</li>
+      </ol>
+    </nav>
+  </div>
+
+  <div class="bg-white p-4 rounded-3 shadow-sm mb-3">
+    <div class="d-flex justify-content-between flex-wrap gap-2 align-items-center">
+      <div>
+        <h4 class="mb-1">Order #<%= order.id %> Payment</h4>
+        <div class="text-muted small">Total: $<%= subtotal.toFixed(2) %></div>
+      </div>
+      <div class="text-end">
+        <div class="text-muted small">Payable</div>
+        <div class="fs-4 fw-semibold">$<%= payable.toFixed(2) %></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="payFormPane" class="bg-white p-4 rounded-3 shadow-sm mb-3">
+    <h5 class="mb-3">Choose payment method</h5>
+
+    <div id="payFormError" class="alert alert-danger d-none"></div>
+
+    <form id="payForm" class="d-flex flex-column gap-3">
+      <div class="form-check">
+        <input class="form-check-input" type="radio" name="paymentMethod" id="pmPaypal" value="paypal" checked>
+        <label class="form-check-label" for="pmPaypal">PayPal (Sandbox)</label>
+      </div>
+      <div class="form-check">
+        <input class="form-check-input" type="radio" name="paymentMethod" id="pmNets" value="nets">
+        <label class="form-check-label" for="pmNets">NETS QR (Sandbox)</label>
+      </div>
+
+      <div class="d-flex flex-wrap gap-2">
+        <button class="btn btn-primary" type="submit">Start Payment</button>
+        <a class="btn btn-outline-secondary" href="/orders/<%= order.id %>">Back to Order</a>
+      </div>
+    </form>
+  </div>
+
+  <div id="payPendingPane" class="bg-white p-4 rounded-3 shadow-sm d-none">
+    <h5 class="mb-3">Waiting for payment</h5>
+
+    <div class="row g-2 mb-3">
+      <div class="col-md-6">
+        <div class="border rounded-3 p-3 h-100">
+          <div class="text-muted small mb-1">Out Trade No</div>
+          <div class="fw-semibold" id="outTradeNo">-</div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="border rounded-3 p-3 h-100">
+          <div class="text-muted small mb-1">Method</div>
+          <div class="fw-semibold" id="payMethod">-</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="payStatus" class="alert alert-info mb-3">
+      <span id="payStatusText">Preparing payment...</span>
+    </div>
+
+    <div class="d-flex flex-wrap gap-2">
+      <a class="btn btn-outline-secondary" href="/orders/<%= order.id %>">View Order</a>
+      <button class="btn btn-outline-secondary" type="button" onclick="reopenPaymentTab()">Open Payment Again</button>
+      <button class="btn btn-primary" type="button" onclick="checkNow()">Check Now</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const payFormEl = document.getElementById('payForm');
+  const payFormPaneEl = document.getElementById('payFormPane');
+  const payPendingPaneEl = document.getElementById('payPendingPane');
+  const payFormErrorEl = document.getElementById('payFormError');
+
+  const outTradeNoEl = document.getElementById('outTradeNo');
+  const payMethodEl = document.getElementById('payMethod');
+  const payStatusEl = document.getElementById('payStatus');
+  const payStatusTextEl = document.getElementById('payStatusText');
+
+  let payOutTradeNo = null;
+  let payUrl = null;
+  let payMethod = null;
+  let pollTimer = null;
+  let sse = null;
+  let consecutiveErrors = 0;
+
+  function setStatus(text, type) {
+    payStatusTextEl.textContent = text;
+    payStatusEl.classList.remove('alert-info', 'alert-success', 'alert-danger');
+    if (type === 'paid') payStatusEl.classList.add('alert-success');
+    else if (type === 'error') payStatusEl.classList.add('alert-danger');
+    else payStatusEl.classList.add('alert-info');
+  }
+
+  function showError(text) {
+    payFormErrorEl.textContent = text;
+    payFormErrorEl.classList.remove('d-none');
+  }
+
+  function hideError() {
+    payFormErrorEl.textContent = '';
+    payFormErrorEl.classList.add('d-none');
+  }
+
+  function stopPolling() {
+    if (pollTimer) {
+      clearInterval(pollTimer);
+      pollTimer = null;
+    }
+    if (sse) {
+      try { sse.close(); } catch (e) {}
+      sse = null;
+    }
+  }
+
+  function reopenPaymentTab() {
+    if (!payUrl) return;
+    window.open(payUrl, '_blank', 'noopener');
+  }
+
+  async function checkNow() {
+    if (!payOutTradeNo) return;
+    try {
+      const resp = await fetch(`/orders/<%= order.id %>/pay/status?out_trade_no=${encodeURIComponent(payOutTradeNo)}`, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' }
+      });
+      const data = await resp.json();
+      if (!data || !data.ok) {
+        setStatus(data && data.error ? data.error : 'Failed to check payment', 'error');
+        return;
+      }
+
+      if (data.paid) {
+        stopPolling();
+        setStatus('Payment successful. Redirecting...', 'paid');
+        window.location.href = `/orders/<%= order.id %>/pay/finish?out_trade_no=${encodeURIComponent(payOutTradeNo)}`;
+        return;
+      }
+
+      const extra = data.orderStatus ? ` (PayPal: ${data.orderStatus})` : (data.txnStatus != null ? ` (NETS status: ${data.txnStatus})` : '');
+      setStatus(`Waiting for payment...${extra}`, 'pending');
+    } catch (e) {
+      setStatus('Network error while checking payment', 'error');
+    }
+  }
+
+  function startFallbackPolling() {
+    stopPolling();
+    consecutiveErrors = 0;
+    pollTimer = setInterval(async () => {
+      try {
+        await checkNow();
+        consecutiveErrors = 0;
+      } catch (e) {
+        consecutiveErrors += 1;
+        if (consecutiveErrors >= 3) {
+          setStatus('Network error. Please click "Check Now" later.', 'error');
+          stopPolling();
+        }
+      }
+    }, 2000);
+  }
+
+  payFormEl.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    hideError();
+    stopPolling();
+
+    const fd = new FormData(payFormEl);
+    const selected = (fd.get('paymentMethod') || '').toString().trim().toLowerCase();
+    if (!selected) {
+      showError('Please choose a payment method');
+      return;
+    }
+
+    try {
+      const resp = await fetch(`/orders/<%= order.id %>/pay/start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Accept': 'application/json' },
+        body: new URLSearchParams({ paymentMethod: selected }).toString()
+      });
+
+      const data = await resp.json();
+      if (!data || !data.ok) {
+        showError(data && data.error ? data.error : 'Failed to create payment');
+        return;
+      }
+
+      if (data.alreadyPaid) {
+        window.location.href = `/orders/<%= order.id %>`;
+        return;
+      }
+
+      payOutTradeNo = data.outTradeNo;
+      payUrl = data.url;
+      payMethod = selected;
+
+      outTradeNoEl.textContent = payOutTradeNo || '-';
+      payMethodEl.textContent = payMethod || '-';
+      setStatus('Payment created. Opening payment page...', 'pending');
+
+      payFormPaneEl.classList.add('d-none');
+      payPendingPaneEl.classList.remove('d-none');
+
+      if (payUrl) window.open(payUrl, '_blank', 'noopener');
+
+      if (payMethod === 'nets') {
+        try {
+          const sseUrl = data.sseUrl || null;
+          if (sseUrl) {
+            sse = new EventSource(sseUrl);
+            sse.onmessage = (evt) => {
+              let obj = null;
+              try { obj = JSON.parse(evt.data); } catch (e2) {}
+              if (obj && obj.success) {
+                stopPolling();
+                setStatus('Payment successful. Redirecting...', 'paid');
+                window.location.href = `/orders/<%= order.id %>/pay/finish?out_trade_no=${encodeURIComponent(payOutTradeNo)}`;
+                return;
+              }
+              if (obj && obj.fail) {
+                stopPolling();
+                setStatus(obj.message || 'Payment failed', 'error');
+                return;
+              }
+              const r = obj && obj.result ? obj.result : null;
+              const statusText = r && r.txnStatus != null ? ` (NETS status: ${r.txnStatus})` : '';
+              setStatus(`Waiting for payment...${statusText}`, 'pending');
+            };
+            sse.onerror = () => {
+              try { sse.close(); } catch (e3) {}
+              sse = null;
+              startFallbackPolling();
+            };
+          } else {
+            startFallbackPolling();
+          }
+        } catch (e4) {
+          startFallbackPolling();
+        }
+      } else {
+        startFallbackPolling();
+      }
+    } catch (e2) {
+      showError('Network error while creating payment');
+    }
+  });
+</script>
+
+<%- include('partials/footer') %>

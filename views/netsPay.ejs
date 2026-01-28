@@ -1,0 +1,119 @@
+<%- include('partials/header') %>
+<%- include('partials/navbar') %>
+
+<div class="container py-4">
+  <div class="breadcrumb-bar mb-3">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a href="/">Home</a></li>
+        <li class="breadcrumb-item"><a href="/orders">My Orders</a></li>
+        <li class="breadcrumb-item"><a href="/orders/<%= order.id %>">#<%= order.id %></a></li>
+        <li class="breadcrumb-item active" aria-current="page">NETS Pay</li>
+      </ol>
+    </nav>
+  </div>
+
+  <div class="bg-white p-4 rounded-3 shadow-sm mb-3">
+    <div class="d-flex justify-content-between flex-wrap gap-2 align-items-center">
+      <div>
+        <h4 class="mb-1">NETS QR Payment</h4>
+        <div class="text-muted small">Order #<%= order.id %> · Out Trade No: <%= outTradeNo %></div>
+      </div>
+      <div class="text-end">
+        <div class="text-muted small">Amount</div>
+        <div class="fs-4 fw-semibold">$<%= amount %></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bg-white p-4 rounded-3 shadow-sm mb-3">
+    <div class="row g-3 align-items-center">
+      <div class="col-md-5 text-center">
+        <img src="<%= qrCodeUrl %>" alt="NETS QR" style="max-width: 100%; border: 1px solid #eee; border-radius: 12px;">
+        <div class="text-muted small mt-2">Scan to pay in NETS app</div>
+      </div>
+      <div class="col-md-7">
+        <div class="border rounded-3 p-3 mb-3">
+          <div class="text-muted small mb-1">Transaction Retrieval Ref</div>
+          <div class="fw-semibold"><%= txnRetrievalRef %></div>
+        </div>
+
+        <div id="payStatus" class="alert alert-info mb-3">
+          <span id="payStatusText">Waiting for payment...</span>
+        </div>
+
+        <div class="d-flex flex-wrap gap-2">
+          <a class="btn btn-outline-secondary" href="/orders/<%= order.id %>/pay">Back to Payment</a>
+          <a class="btn btn-outline-secondary" href="/orders/<%= order.id %>">View Order</a>
+          <button class="btn btn-primary" type="button" onclick="checkNow()">Check Now</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const payStatusEl = document.getElementById('payStatus');
+  const payStatusTextEl = document.getElementById('payStatusText');
+
+  function setStatus(text, type) {
+    payStatusTextEl.textContent = text;
+    payStatusEl.classList.remove('alert-info', 'alert-success', 'alert-danger');
+    if (type === 'paid') payStatusEl.classList.add('alert-success');
+    else if (type === 'error') payStatusEl.classList.add('alert-danger');
+    else payStatusEl.classList.add('alert-info');
+  }
+
+  async function checkNow() {
+    try {
+      const resp = await fetch(`/orders/<%= order.id %>/pay/status?out_trade_no=${encodeURIComponent('<%= outTradeNo %>')}`, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' }
+      });
+      const data = await resp.json();
+      if (!data || !data.ok) {
+        setStatus(data && data.error ? data.error : 'Failed to check payment', 'error');
+        return;
+      }
+      if (data.paid) {
+        setStatus('Payment successful. Redirecting...', 'paid');
+        window.location.href = `/orders/<%= order.id %>/pay/finish?out_trade_no=${encodeURIComponent('<%= outTradeNo %>')}`;
+        return;
+      }
+      const statusText = data && data.txnStatus != null ? ` (NETS status: ${data.txnStatus})` : '';
+      setStatus(`Waiting for payment...${statusText}`, 'pending');
+    } catch (e) {
+      setStatus('Network error while checking payment', 'error');
+    }
+  }
+
+  (function initSse() {
+    try {
+      const es = new EventSource('<%= sseUrl %>');
+      es.onmessage = (evt) => {
+        let obj = null;
+        try { obj = JSON.parse(evt.data); } catch (e) {}
+        if (obj && obj.success) {
+          try { es.close(); } catch (e2) {}
+          setStatus('Payment successful. Redirecting...', 'paid');
+          window.location.href = `/orders/<%= order.id %>/pay/finish?out_trade_no=${encodeURIComponent('<%= outTradeNo %>')}`;
+          return;
+        }
+        if (obj && obj.fail) {
+          try { es.close(); } catch (e3) {}
+          setStatus(obj.message || 'Payment failed', 'error');
+          return;
+        }
+        const r = obj && obj.result ? obj.result : null;
+        const statusText = r && r.txnStatus != null ? ` (NETS status: ${r.txnStatus})` : '';
+        setStatus(`Waiting for payment...${statusText}`, 'pending');
+      };
+      es.onerror = () => {
+        try { es.close(); } catch (e4) {}
+      };
+    } catch (e5) {}
+  })();
+</script>
+
+<%- include('partials/footer') %>
+

@@ -42,17 +42,25 @@
             <th>Order ID</th>
             <th>Date</th>
             <th>Total ($)</th>
+            <th>Status</th>
             <th></th>
           </tr>
         </thead>
         <tbody>
           <% orders.forEach(order => { %>
+            <% const statusText = (order.status || 'Pending'); %>
+            <% const statusLower = String(statusText).toLowerCase(); %>
+            <% const statusBadgeClass = statusLower === 'paid' ? 'text-bg-success' : 'text-bg-warning'; %>
             <tr class="text-center">
               <td>#<%= order.id %></td>
               <td><%= order.created_at.toDateString() %></td>
               <td>$<%= Number(order.totalAmount).toFixed(2) %></td>
+              <td><span class="badge <%= statusBadgeClass %>"><%= statusText %></span></td>
               <td>
                 <a href="/orders/<%= order.id %>" class="btn btn-outline-primary btn-sm">Details</a>
+                <% if ((String(order.status || '')).toLowerCase() !== 'paid') { %>
+                  <a href="/orders/<%= order.id %>/pay" class="btn btn-primary btn-sm ms-1">Pay</a>
+                <% } %>
               </td>
             </tr>
           <% }) %>
