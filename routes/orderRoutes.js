@@ -9,6 +9,7 @@ router.get('/orders', checkAuthenticated, OrderController.myOrders);
 
 // ✅ USER — view single order details
 router.get('/orders/:id', checkAuthenticated, OrderController.orderDetails);
+router.get('/orders/:id/invoice', checkAuthenticated, OrderController.invoicePage);
 router.post('/orders/:id/cancel', checkAuthenticated, OrderController.cancelOrder);
 
 // ✅ USER — payment page

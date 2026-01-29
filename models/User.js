@@ -17,6 +17,10 @@ const User = {
     db.query('SELECT id, username, email, role FROM users ORDER BY username ASC', callback);
   },
 
+  findById(userId, callback) {
+    db.query('SELECT id, username, email, address, contact, role FROM users WHERE id = ?', [userId], callback);
+  },
+
   updateRole(userId, role, callback) {
     db.query('UPDATE users SET role = ? WHERE id = ?', [role, userId], callback);
   },

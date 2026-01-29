@@ -5,6 +5,7 @@ const Product = require('../models/Product');
 const RefundRequest = require('../models/RefundRequest');
 const paypalSandbox = require('../utils/paypalSandbox');
 const netsSandbox = require('../utils/netsSandbox');
+const User = require('../models/User');
 
 const OrderController = {
 
@@ -168,6 +169,44 @@ const OrderController = {
             items,
             refundRequest,
             canRequestRefund
+          });
+        });
+      });
+    });
+  },
+
+  invoicePage(req, res) {
+    const orderId = parseInt(req.params.id, 10);
+    const currentUser = req.session.user;
+    if (Number.isNaN(orderId)) return res.status(400).send('Invalid order ID');
+
+    Order.findByIdWithUser(orderId, (err, orderData) => {
+      if (err) {
+        console.error(err);
+        return res.status(500).send('Error loading order');
+      }
+
+      const order = orderData && orderData[0];
+      if (!order) return res.status(404).send('Order not found');
+      if (currentUser.role !== 'admin' && order.userId !== currentUser.id) return res.status(403).send('Access denied');
+
+      OrderItem.findDetailsByOrder(orderId, (itemErr, items) => {
+        if (itemErr) {
+          console.error(itemErr);
+          return res.status(500).send('Error loading order items');
+        }
+        RefundRequest.findByOrder(orderId, (refundErr, refundRequest) => {
+          if (refundErr) {
+            console.error(refundErr);
+            return res.status(500).send('Error loading refund');
+          }
+          User.findById(order.userId, (userErr, users) => {
+            if (userErr) {
+              console.error(userErr);
+              return res.status(500).send('Error loading user');
+            }
+            const user = users && users[0] ? users[0] : { username: order.username, email: '', address: '', contact: '' };
+            res.render('invoice', { order, items, refundRequest, user });
           });
         });
       });
