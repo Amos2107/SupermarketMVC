@@ -155,6 +155,29 @@ function extractCaptureId(payload) {
   }
 }
 
+async function refundCapture(req, captureId, amount) {
+  const config = getConfig(req, 0);
+  const configError = assertConfig(config);
+  if (configError) throw new Error(configError);
+  const token = await getAccessToken(config);
+  const bodyObj = {};
+  const money = formatMoney(amount);
+  if (money) {
+    bodyObj.amount = { currency_code: 'USD', value: money };
+  }
+  const body = JSON.stringify(bodyObj);
+  return httpsRequestJson(
+    'POST',
+    `${config.apiBase}/v2/payments/captures/${encodeURIComponent(captureId)}/refund`,
+    {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      'Content-Length': Buffer.byteLength(body)
+    },
+    body
+  );
+}
+
 function buildOrderPayUrl(req, order, outTradeNoOverride) {
   const outTradeNo = outTradeNoOverride || `ORDER_${order.id}_${Date.now()}`;
   const config = getConfig(req, order.id, outTradeNo);
@@ -199,5 +222,6 @@ async function queryOrderPaid(req, orderId, providerOrderId) {
 module.exports = {
   safeJson,
   buildOrderPayUrl,
-  queryOrderPaid
+  queryOrderPaid,
+  refundCapture
 };

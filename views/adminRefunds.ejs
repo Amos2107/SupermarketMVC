@@ -1,0 +1,88 @@
+<%- include('partials/header') %>
+<%- include('partials/navbar') %>
+
+<div class="container py-4">
+  <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+    <div>
+      <h2 class="mb-1">Refund Requests</h2>
+      <div class="text-muted small">Approve or reject refund requests submitted by users.</div>
+    </div>
+    <a href="/admin/orders" class="btn btn-outline-secondary">Back to Orders</a>
+  </div>
+
+  <% if (!requests || requests.length === 0) { %>
+    <div class="bg-white p-4 rounded-3 shadow-sm text-center">
+      <p class="mb-2">No refund requests found.</p>
+      <a href="/admin/orders" class="btn btn-primary">View orders</a>
+    </div>
+  <% } else { %>
+    <div class="table-responsive">
+      <table class="table table-hover align-middle bg-white shadow-sm">
+        <thead class="table-light text-center">
+          <tr>
+            <th>Request</th>
+            <th>Order</th>
+            <th>User</th>
+            <th>Requested</th>
+            <th>Status</th>
+            <th>Reason</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% requests.forEach(r => { %>
+            <% const statusLower = String(r.status || '').toLowerCase(); %>
+            <% const statusBadge = statusLower === 'approved' ? 'text-bg-success' : (statusLower === 'rejected' ? 'text-bg-danger' : 'text-bg-warning'); %>
+            <% const paidAt = r.paid_at ? new Date(r.paid_at) : null; %>
+            <% const refundableUntil = paidAt ? new Date(paidAt.getTime() + 7 * 24 * 60 * 60 * 1000) : null; %>
+            <tr class="text-center">
+              <td>#<%= r.id %><div class="text-muted small"><%= r.created_at ? new Date(r.created_at).toLocaleString() : '-' %></div></td>
+              <td>
+                #<%= r.orderId %><div class="text-muted small">$<%= Number(r.orderTotal).toFixed(2) %></div>
+              </td>
+              <td>
+                <div><%= r.username %></div>
+                <div class="text-muted small"><%= r.email %></div>
+              </td>
+              <td>
+                $<%= Number(r.requested_amount).toFixed(2) %>
+                <div class="text-muted small">Paid: <%= paidAt ? paidAt.toDateString() : '-' %></div>
+              </td>
+              <td><span class="badge <%= statusBadge %>"><%= r.status %></span></td>
+              <td class="text-start"><%= r.reason %></td>
+              <td class="text-start">
+                <% if (statusLower === 'pending') { %>
+                  <form action="/admin/refunds/<%= r.id %>/approve" method="POST" class="d-flex flex-wrap gap-2 mb-2 align-items-end">
+                    <div>
+                      <label class="form-label small mb-1">Approve amount</label>
+                      <input type="number" name="approvedAmount" class="form-control form-control-sm" min="0.01" max="<%= Number(r.orderTotal).toFixed(2) %>" step="0.01" required>
+                    </div>
+                    <div>
+                      <label class="form-label small mb-1">Note (optional)</label>
+                      <input type="text" name="decisionNote" class="form-control form-control-sm" placeholder="Reason / note">
+                    </div>
+                    <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Approve refund?');">Approve</button>
+                  </form>
+                  <form action="/admin/refunds/<%= r.id %>/reject" method="POST" class="d-flex flex-wrap gap-2 align-items-end">
+                    <div>
+                      <label class="form-label small mb-1">Rejection note</label>
+                      <input type="text" name="decisionNote" class="form-control form-control-sm" placeholder="Reason">
+                    </div>
+                    <button type="submit" class="btn btn-outline-secondary btn-sm" onclick="return confirm('Reject refund?');">Reject</button>
+                  </form>
+                  <div class="text-muted small mt-2">Refundable until <%= refundableUntil ? refundableUntil.toDateString() : '-' %></div>
+                <% } else { %>
+                  <div class="text-muted small">Decision: <%= r.decision_note || '-' %></div>
+                  <div class="text-muted small">Approved: <%= r.approved_amount ? `$${Number(r.approved_amount).toFixed(2)}` : '-' %></div>
+                  <div class="text-muted small">Decided: <%= r.decided_at ? new Date(r.decided_at).toLocaleString() : '-' %></div>
+                <% } %>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+</div>
+
+<%- include('partials/footer') %>

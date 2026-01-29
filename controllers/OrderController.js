@@ -2,6 +2,7 @@ const Order = require('../models/Order');
 const OrderItem = require('../models/OrderItem');
 const CartItem = require('../models/CartItem');
 const Product = require('../models/Product');
+const RefundRequest = require('../models/RefundRequest');
 const paypalSandbox = require('../utils/paypalSandbox');
 const netsSandbox = require('../utils/netsSandbox');
 
@@ -16,7 +17,19 @@ const OrderController = {
         console.error(err);
         return res.status(500).send('Error loading orders');
       }
-      res.render('orders', { orders });
+      RefundRequest.findByUser(userId, (refundErr, refunds) => {
+        if (refundErr) {
+          console.error(refundErr);
+          return res.status(500).send('Error loading refunds');
+        }
+
+        const refundMap = {};
+        (refunds || []).forEach((r) => {
+          if (!refundMap[r.orderId]) refundMap[r.orderId] = r;
+        });
+
+        res.render('orders', { orders, refundMap });
+      });
     });
   },
 
@@ -135,10 +148,27 @@ const OrderController = {
           console.error(itemErr);
           return res.status(500).send('Error loading order items');
         }
+        RefundRequest.findByOrder(orderId, (refundErr, refundRequest) => {
+          if (refundErr) {
+            console.error(refundErr);
+            return res.status(500).send('Error loading refund');
+          }
 
-        res.render('orderDetails', {
-          order,
-          items
+          const paidAt = order.paid_at ? new Date(order.paid_at) : null;
+          const refundWindowMs = 7 * 24 * 60 * 60 * 1000;
+          const canRequestRefund =
+            String(order.status || '').toLowerCase() === 'paid' &&
+            paidAt &&
+            !Number.isNaN(paidAt.getTime()) &&
+            Date.now() - paidAt.getTime() <= refundWindowMs &&
+            (!refundRequest || String(refundRequest.status || '').toLowerCase() === 'rejected');
+
+          res.render('orderDetails', {
+            order,
+            items,
+            refundRequest,
+            canRequestRefund
+          });
         });
       });
     });
@@ -163,6 +193,14 @@ const OrderController = {
         req.flash('success', 'Order already paid');
         return res.redirect(`/orders/${orderId}`);
       }
+      if ((order.status || '').toString().toLowerCase().includes('refund')) {
+        req.flash('error', 'Order has been refunded.');
+        return res.redirect(`/orders/${orderId}`);
+      }
+      if ((order.status || '').toString().toLowerCase() === 'cancelled') {
+        req.flash('error', 'Order is cancelled.');
+        return res.redirect(`/orders/${orderId}`);
+      }
 
       res.render('orderPay', { order });
     });
@@ -184,7 +222,10 @@ const OrderController = {
       if (!order) return paypalSandbox.safeJson(res, 404, { ok: false, error: 'Order not found' });
       if (currentUser.role !== 'admin' && order.userId !== currentUser.id) return paypalSandbox.safeJson(res, 403, { ok: false, error: 'Access denied' });
 
-      if ((order.status || '').toString().toLowerCase() === 'paid') return paypalSandbox.safeJson(res, 200, { ok: true, alreadyPaid: true });
+      const statusLower = (order.status || '').toString().toLowerCase();
+      if (statusLower === 'paid') return paypalSandbox.safeJson(res, 200, { ok: true, alreadyPaid: true });
+      if (statusLower.includes('refund')) return paypalSandbox.safeJson(res, 400, { ok: false, error: 'Order has been refunded' });
+      if (statusLower === 'cancelled') return paypalSandbox.safeJson(res, 400, { ok: false, error: 'Order is cancelled' });
 
       const outTradeNo = `ORDER_${order.id}_${Date.now()}`;
       const subtotal = Number(order.totalAmount);
@@ -224,7 +265,10 @@ const OrderController = {
       if (!order) return paypalSandbox.safeJson(res, 404, { ok: false, error: 'Order not found' });
       if (currentUser.role !== 'admin' && order.userId !== currentUser.id) return paypalSandbox.safeJson(res, 403, { ok: false, error: 'Access denied' });
 
-      if ((order.status || '').toString().toLowerCase() === 'paid') return paypalSandbox.safeJson(res, 200, { ok: true, paid: true });
+      const statusLower = (order.status || '').toString().toLowerCase();
+      if (statusLower === 'paid') return paypalSandbox.safeJson(res, 200, { ok: true, paid: true });
+      if (statusLower.includes('refund')) return paypalSandbox.safeJson(res, 400, { ok: false, error: 'Order has been refunded' });
+      if (statusLower === 'cancelled') return paypalSandbox.safeJson(res, 400, { ok: false, error: 'Order is cancelled' });
 
       if (order.payment_out_trade_no && String(order.payment_out_trade_no) !== outTradeNo) {
         return paypalSandbox.safeJson(res, 400, { ok: false, error: 'out_trade_no not match this order' });
@@ -297,6 +341,14 @@ const OrderController = {
     const statusLower = (order.status || '').toString().toLowerCase();
     if (statusLower === 'paid') {
       req.flash('success', 'Payment successful');
+      return res.redirect(`/orders/${orderId}`);
+    }
+    if (statusLower.includes('refund')) {
+      req.flash('error', 'Order has been refunded');
+      return res.redirect(`/orders/${orderId}`);
+    }
+    if (statusLower === 'cancelled') {
+      req.flash('error', 'Order is cancelled');
       return res.redirect(`/orders/${orderId}`);
     }
 
@@ -430,6 +482,53 @@ const OrderController = {
         send({ pending: true, result });
         await new Promise((r) => setTimeout(r, 2000));
       }
+    });
+  },
+  cancelOrder(req, res) {
+    const orderId = parseInt(req.params.id, 10);
+    const currentUser = req.session.user;
+    if (Number.isNaN(orderId)) return res.status(400).send('Invalid order ID');
+
+    Order.findByIdWithUser(orderId, (err, orderData) => {
+      if (err) {
+        console.error(err);
+        return res.status(500).send('Error loading order');
+      }
+
+      const order = orderData && orderData[0];
+      if (!order) return res.status(404).send('Order not found');
+      if (currentUser.role !== 'admin' && order.userId !== currentUser.id) return res.status(403).send('Access denied');
+
+      const statusLower = String(order.status || '').toLowerCase();
+      if (statusLower === 'paid') {
+        req.flash('error', 'Paid orders cannot be cancelled.');
+        return res.redirect(`/orders/${orderId}`);
+      }
+      if (statusLower.includes('refund')) {
+        req.flash('error', 'Refunded orders cannot be cancelled.');
+        return res.redirect(`/orders/${orderId}`);
+      }
+      if (statusLower === 'cancelled') {
+        req.flash('success', 'Order already cancelled.');
+        return res.redirect(`/orders/${orderId}`);
+      }
+
+      Product.incrementStockFromOrder(orderId, (stockErr) => {
+        if (stockErr) {
+          console.error(stockErr);
+          return res.status(500).send('Error restoring stock');
+        }
+
+        Order.cancel(orderId, (cancelErr) => {
+          if (cancelErr) {
+            console.error(cancelErr);
+            return res.status(500).send('Error cancelling order');
+          }
+
+          req.flash('success', 'Order cancelled successfully.');
+          return res.redirect(`/orders/${orderId}`);
+        });
+      });
     });
   }
 };

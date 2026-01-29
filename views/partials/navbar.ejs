@@ -24,18 +24,46 @@
               <a class="nav-link <%= currentPath === '/addProduct' ? 'active' : '' %>" href="/addProduct">Add Product</a>
             </li>
 
-            <li class="nav-item">
-              <a class="nav-link <%= currentPath.startsWith('/admin/orders') ? 'active' : '' %>" href="/admin/orders">All Orders</a>
+            <li class="nav-item dropdown">
+              <a class="nav-link <%= (currentPath.startsWith('/admin/orders') || currentPath.startsWith('/orders')) ? 'active' : '' %> dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                Orders
+              </a>
+              <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="/admin/orders">All Orders</a></li>
+                <li><a class="dropdown-item" href="/orders">My Orders</a></li>
+              </ul>
             </li>
 
             <li class="nav-item">
               <a class="nav-link <%= currentPath.startsWith('/admin/users') ? 'active' : '' %>" href="/admin/users">Users</a>
             </li>
 
+            <li class="nav-item dropdown">
+              <a class="nav-link dropdown-toggle <%= (currentPath.startsWith('/refunds') || currentPath.startsWith('/admin/refunds')) ? 'active' : '' %>" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                Refunds
+              </a>
+              <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="/refunds/new">Request Refund</a></li>
+                <li><a class="dropdown-item" href="/refunds">My Refunds</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="/admin/refunds">Admin Queue</a></li>
+              </ul>
+            </li>
+
           <% } else { %>
 
             <li class="nav-item">
               <a class="nav-link <%= currentPath.startsWith('/orders') ? 'active' : '' %>" href="/orders">My Orders</a>
+            </li>
+
+            <li class="nav-item dropdown">
+              <a class="nav-link dropdown-toggle <%= currentPath.startsWith('/refunds') ? 'active' : '' %>" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                Refunds
+              </a>
+              <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="/refunds/new">Request Refund</a></li>
+                <li><a class="dropdown-item" href="/refunds">My Refunds</a></li>
+              </ul>
             </li>
 
           <% } %>

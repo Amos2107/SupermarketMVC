@@ -35,13 +35,38 @@
       <a href="/shopping" class="btn btn-primary">Start shopping</a>
     </div>
   <% } else { %>
+    <div class="filter-bar mb-3">
+      <div class="row g-3 align-items-end">
+        <div class="col-md-4">
+          <label for="orderSearch" class="form-label mb-1 text-muted small">Search by order id</label>
+          <input id="orderSearch" type="search" class="form-control" placeholder="e.g., 1024" aria-label="Search orders">
+        </div>
+        <div class="col-md-6">
+          <div class="d-flex flex-wrap gap-2">
+            <button class="status-chip active" data-status="all">All</button>
+            <button class="status-chip" data-status="paid">Paid</button>
+            <button class="status-chip" data-status="unpaid">Unpaid</button>
+            <button class="status-chip" data-status="cancelled">Cancelled</button>
+            <button class="status-chip" data-status="refunded">Refunded</button>
+            <button class="status-chip" data-status="refund-pending">Refund Pending</button>
+            <button class="status-chip" data-status="refund-rejected">Refund Rejected</button>
+          </div>
+        </div>
+        <div class="col-md-2 text-md-end">
+          <div class="results-count" id="orderResultsCount">Showing 0 orders</div>
+        </div>
+      </div>
+    </div>
+
     <div class="table-responsive">
-      <table class="table table-hover table-sticky bg-white shadow-sm align-middle">
+      <table class="table table-hover table-sticky bg-white shadow-sm align-middle" id="ordersTable">
         <thead class="table-light text-center">
           <tr>
             <th>Order ID</th>
             <th>Date</th>
             <th>Total ($)</th>
+            <th>Payment</th>
+            <th>Paid Date</th>
             <th>Status</th>
             <th></th>
           </tr>
@@ -50,24 +75,92 @@
           <% orders.forEach(order => { %>
             <% const statusText = (order.status || 'Pending'); %>
             <% const statusLower = String(statusText).toLowerCase(); %>
-            <% const statusBadgeClass = statusLower === 'paid' ? 'text-bg-success' : 'text-bg-warning'; %>
-            <tr class="text-center">
+            <% const refundRequest = refundMap && refundMap[order.id] ? refundMap[order.id] : null; %>
+            <% const refundStatusLower = refundRequest ? String(refundRequest.status || '').toLowerCase() : ''; %>
+            <% const statusBadgeClass = statusLower === 'paid' ? 'text-bg-success' : (statusLower.includes('refund') ? 'text-bg-info' : (statusLower === 'cancelled' ? 'text-bg-danger' : 'text-bg-warning')); %>
+            <tr class="text-center order-row" data-status="<%= statusLower === 'paid' ? 'paid' : (statusLower.includes('refund') ? 'refunded' : (statusLower === 'cancelled' ? 'cancelled' : 'unpaid')) %>" data-refund="<%= refundStatusLower || '' %>" data-id="<%= order.id %>">
               <td>#<%= order.id %></td>
               <td><%= order.created_at.toDateString() %></td>
               <td>$<%= Number(order.totalAmount).toFixed(2) %></td>
-              <td><span class="badge <%= statusBadgeClass %>"><%= statusText %></span></td>
+              <td class="text-capitalize"><%= order.payment_method || '-' %></td>
+              <td><%= order.paid_at ? new Date(order.paid_at).toDateString() : '-' %></td>
+              <td>
+                <span class="badge <%= statusBadgeClass %>"><%= statusText %></span>
+                <% if (refundStatusLower === 'pending') { %>
+                  <span class="badge text-bg-secondary ms-1">Refund Requested</span>
+                <% } else if (refundStatusLower === 'rejected') { %>
+                  <span class="badge text-bg-danger ms-1">Refund Rejected</span>
+                <% } %>
+              </td>
               <td>
                 <a href="/orders/<%= order.id %>" class="btn btn-outline-primary btn-sm">Details</a>
-                <% if ((String(order.status || '')).toLowerCase() !== 'paid') { %>
+                <% if ((String(order.status || '')).toLowerCase() !== 'paid' && (String(order.status || '')).toLowerCase() !== 'cancelled' && !(String(order.status || '')).toLowerCase().includes('refund')) { %>
                   <a href="/orders/<%= order.id %>/pay" class="btn btn-primary btn-sm ms-1">Pay</a>
+                  <form action="/orders/<%= order.id %>/cancel" method="POST" class="d-inline" onsubmit="return confirm('Cancel this order?');">
+                    <button type="submit" class="btn btn-outline-danger btn-sm ms-1">Cancel</button>
+                  </form>
                 <% } %>
               </td>
             </tr>
           <% }) %>
+          <tr id="orderNoResults" class="text-center text-muted" style="display:none;">
+            <td colspan="7">No orders match your filters.</td>
+          </tr>
         </tbody>
       </table>
     </div>
   <% } %>
 </div>
+
+<script>
+  (function() {
+    const searchInput = document.getElementById('orderSearch');
+    const chips = Array.from(document.querySelectorAll('.status-chip'));
+    const rows = Array.from(document.querySelectorAll('.order-row'));
+    const noResults = document.getElementById('orderNoResults');
+    const resultsCount = document.getElementById('orderResultsCount');
+
+    const filterRows = () => {
+      const term = (searchInput?.value || '').trim().toLowerCase();
+      const activeStatus = chips.find(c => c.classList.contains('active'))?.dataset.status || 'all';
+      let visible = 0;
+
+      rows.forEach(row => {
+        const id = (row.dataset.id || '').toString();
+        const status = row.dataset.status || '';
+        const refund = row.dataset.refund || '';
+        let show = !term || id.includes(term);
+        if (activeStatus === 'refund-pending') show = show && refund === 'pending';
+        else if (activeStatus === 'refund-rejected') show = show && refund === 'rejected';
+        else if (activeStatus !== 'all') show = show && status === activeStatus;
+        row.style.display = show ? '' : 'none';
+        if (show) visible += 1;
+      });
+
+      if (resultsCount) {
+        resultsCount.textContent = `Showing ${visible} order${visible === 1 ? '' : 's'}`;
+      }
+      if (noResults) noResults.style.display = visible === 0 ? '' : 'none';
+    };
+
+    chips.forEach(chip => {
+      chip.addEventListener('click', () => {
+        chips.forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+        filterRows();
+      });
+    });
+
+    if (searchInput) {
+      let debounce;
+      searchInput.addEventListener('input', () => {
+        clearTimeout(debounce);
+        debounce = setTimeout(filterRows, 120);
+      });
+    }
+
+    filterRows();
+  })();
+</script>
 
 <%- include('partials/footer') %>

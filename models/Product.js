@@ -63,6 +63,17 @@ const Product = {
     );
   },
 
+  incrementStockFromOrder(orderId, callback) {
+    db.query(
+      `UPDATE products p
+       JOIN order_items oi ON oi.productId = p.id
+       SET p.quantity = p.quantity + oi.quantity
+       WHERE oi.orderId = ?`,
+      [orderId],
+      callback
+    );
+  },
+
   getInventoryHealth(threshold = 10, callback) {
     db.query(
       `SELECT COUNT(*) AS totalSkus,

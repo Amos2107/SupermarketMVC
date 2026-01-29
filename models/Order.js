@@ -75,6 +75,20 @@ const Order = {
     );
   },
 
+  cancel(orderId, callback) {
+    db.query(
+      `UPDATE orders
+       SET status = 'Cancelled',
+           payment_method = NULL,
+           payment_out_trade_no = NULL,
+           payment_provider_ref = NULL,
+           paid_at = NULL
+       WHERE id = ?`,
+      [orderId],
+      callback
+    );
+  },
+
   findByOutTradeNo(outTradeNo, callback) {
     db.query(
       `SELECT o.id, o.userId, o.total AS totalAmount, o.status, o.payment_method, o.payment_out_trade_no, o.payment_provider_ref, o.paid_at, o.created_at, u.username

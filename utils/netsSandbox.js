@@ -1,7 +1,6 @@
 const https = require('https');
 const crypto = require('crypto');
 
-// 简单的内存缓存：复用同一 outTradeNo 的 NETS QR session
 const qrSessionStore = new Map();
 
 function safeJson(res, statusCode, payload) {
@@ -182,6 +181,18 @@ async function queryPaid(req, txnRetrievalRef) {
   }
 }
 
+async function refundPayment(req, txnRetrievalRef, amount) {
+  const config = getConfig(req);
+  const configError = assertConfig(config);
+  if (configError) return { ok: false, error: configError };
+  if (!txnRetrievalRef) return { ok: false, error: 'Missing NETS transaction reference' };
+
+  // NETS sandbox refund simulation (no API endpoint wired in this project).
+  const num = Number(amount);
+  if (!Number.isFinite(num) || num <= 0) return { ok: false, error: 'Invalid refund amount' };
+  return { ok: true, message: 'NETS refund simulated in sandbox' };
+}
+
 module.exports = {
   safeJson,
   newTxnId,
@@ -189,6 +200,6 @@ module.exports = {
   assertConfig,
   buildOrderPayUrl,
   getOrCreateSession,
-  queryPaid
+  queryPaid,
+  refundPayment
 };
-

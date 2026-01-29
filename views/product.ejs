@@ -24,7 +24,15 @@
         </div>
 
         <div class="card shadow-sm border-0">
-          <div class="card-body text-center p-4">
+          <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+              <% const inStock = product.quantity > 0; %>
+              <% const lowStock = inStock && product.quantity < 10; %>
+              <span class="stock-pill <%= inStock ? 'bg-success text-white' : 'bg-secondary text-white' %>">
+                <%= inStock ? (lowStock ? 'Low stock' : 'In stock') : 'Out of stock' %>
+              </span>
+              <span class="badge bg-light text-primary">$<%= product.price.toFixed(2) %></span>
+            </div>
             <img
               src="/images/<%= product.image %>"
               alt="<%= product.productName %>"
@@ -32,8 +40,37 @@
               style="max-height: 280px; object-fit: contain;"
             >
 
-            <p class="mb-2"><strong>Quantity:</strong> <%= product.quantity %></p>
-            <p class="mb-3"><strong>Price:</strong> $<%= product.price.toFixed(2) %></p>
+            <div class="product-meta mb-3">
+              <div class="bg-white border rounded-3 p-3">
+                <div class="text-muted small">Available</div>
+                <div class="fw-semibold"><%= product.quantity %></div>
+              </div>
+              <div class="bg-white border rounded-3 p-3">
+                <div class="text-muted small">Price</div>
+                <div class="fw-semibold">$<%= product.price.toFixed(2) %></div>
+              </div>
+              <div class="bg-white border rounded-3 p-3">
+                <div class="text-muted small">Product ID</div>
+                <div class="fw-semibold">#<%= product.id %></div>
+              </div>
+            </div>
+
+            <% if (user.role !== 'admin') { %>
+              <form action="/cart/add/<%= product.id %>" method="POST" class="d-flex flex-wrap gap-2 align-items-end justify-content-center mb-3">
+                <div>
+                  <label class="form-label small text-muted">Quantity</label>
+                  <% const maxSelectable = Math.max(1, Math.min(10, product.quantity || 0)); %>
+                  <select name="quantity" class="form-select" <%= inStock ? '' : 'disabled' %>>
+                    <% for (let q = 1; q <= maxSelectable; q++) { %>
+                      <option value="<%= q %>"><%= q %></option>
+                    <% } %>
+                  </select>
+                </div>
+                <button type="submit" class="btn btn-primary" <%= inStock ? '' : 'disabled' %>>
+                  <%= inStock ? 'Add to Cart' : 'Out of Stock' %>
+                </button>
+              </form>
+            <% } %>
 
             <div class="d-flex justify-content-center gap-2 mt-3">
               <% if (user.role === 'admin') { %>
@@ -41,6 +78,7 @@
                 <a href="/updateProduct/<%= product.id %>" class="btn btn-primary">Edit Product</a>
               <% } else { %>
                 <a href="/shopping" class="btn btn-outline-secondary">Back to Shopping</a>
+                <a href="/cart" class="btn btn-outline-primary">View Cart</a>
               <% } %>
             </div>
           </div>

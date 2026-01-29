@@ -16,6 +16,8 @@
         <th>User</th>
         <th>Date</th>
         <th>Total ($)</th>
+        <th>Payment</th>
+        <th>Paid Date</th>
         <th>Status</th>
         <th>View</th>
       </tr>
@@ -25,12 +27,14 @@
       <% orders.forEach(order => { %>
         <% const statusText = (order.status || 'Pending'); %>
         <% const statusLower = String(statusText).toLowerCase(); %>
-        <% const statusBadgeClass = statusLower === 'paid' ? 'text-bg-success' : 'text-bg-warning'; %>
+        <% const statusBadgeClass = statusLower === 'paid' ? 'text-bg-success' : (statusLower.includes('refund') ? 'text-bg-info' : (statusLower === 'cancelled' ? 'text-bg-danger' : 'text-bg-warning')); %>
         <tr class="order-row" data-id="<%= String(order.id).toLowerCase() %>" data-user="<%= (order.username || '').toLowerCase() %>">
           <td><%= order.id %></td>
           <td><%= order.username %></td>
           <td><%= order.created_at.toDateString() %></td>
           <td>$<%= Number(order.totalAmount).toFixed(2) %></td>
+          <td class="text-capitalize"><%= order.payment_method || '-' %></td>
+          <td><%= order.paid_at ? new Date(order.paid_at).toDateString() : '-' %></td>
           <td><span class="badge <%= statusBadgeClass %>"><%= statusText %></span></td>
           <td>
             <a href="/orders/<%= order.id %>" class="btn btn-primary btn-sm">Details</a>
@@ -38,7 +42,7 @@
         </tr>
       <% }) %>
       <tr id="ordersNoResults" class="text-center text-muted" style="display:none;">
-        <td colspan="6">No orders match your search.</td>
+        <td colspan="8">No orders match your search.</td>
       </tr>
     </tbody>
   </table>

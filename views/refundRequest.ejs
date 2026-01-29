@@ -1,0 +1,60 @@
+<%- include('partials/header') %>
+<%- include('partials/navbar') %>
+
+<div class="container py-4">
+  <div class="breadcrumb-bar mb-3">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a href="/">Home</a></li>
+        <li class="breadcrumb-item"><a href="/orders">My Orders</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Refund Request</li>
+      </ol>
+    </nav>
+  </div>
+
+  <div class="bg-white p-4 rounded-3 shadow-sm">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+      <div>
+        <h3 class="mb-1">Request a Refund</h3>
+        <div class="text-muted small">Paid orders are refundable within 7 days of payment.</div>
+      </div>
+      <a href="/orders" class="btn btn-outline-secondary">Back to Orders</a>
+    </div>
+
+    <% if (!orders || orders.length === 0) { %>
+      <div class="text-center py-4">
+        <p class="mb-2">No eligible orders for refund.</p>
+        <a href="/orders" class="btn btn-primary">View orders</a>
+      </div>
+    <% } else { %>
+      <form action="/refunds" method="POST" class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label">Order</label>
+          <select name="orderId" class="form-select" required>
+            <% orders.forEach(order => { %>
+              <% const optSelected = preselectOrderId && Number(preselectOrderId) === Number(order.id); %>
+              <option value="<%= order.id %>" <%= optSelected ? 'selected' : '' %>>
+                #<%= order.id %> - $<%= Number(order.totalAmount).toFixed(2) %> (Paid: <%= order.paid_at ? new Date(order.paid_at).toDateString() : '-' %>)
+              </option>
+            <% }) %>
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Requested amount (optional)</label>
+          <input type="number" name="requestedAmount" class="form-control" step="0.01" min="0.01" placeholder="Leave blank for full refund">
+          <div class="form-text">Admin will decide final amount.</div>
+        </div>
+        <div class="col-12">
+          <label class="form-label">Refund reason</label>
+          <textarea name="reason" class="form-control" rows="4" required placeholder="Tell us why you are requesting a refund"></textarea>
+        </div>
+        <div class="col-12 d-flex gap-2">
+          <button type="submit" class="btn btn-primary">Submit Request</button>
+          <a href="/orders" class="btn btn-outline-secondary">Cancel</a>
+        </div>
+      </form>
+    <% } %>
+  </div>
+</div>
+
+<%- include('partials/footer') %>

@@ -1,0 +1,139 @@
+<%- include('partials/header') %>
+<%- include('partials/navbar') %>
+
+<div class="container py-4">
+  <div class="breadcrumb-bar mb-3">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a href="/">Home</a></li>
+        <li class="breadcrumb-item"><a href="/orders">My Orders</a></li>
+        <li class="breadcrumb-item active" aria-current="page">My Refund Requests</li>
+      </ol>
+    </nav>
+  </div>
+
+  <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+    <div>
+      <h3 class="mb-1">My Refund Requests</h3>
+      <div class="text-muted small">Track the status of your refund requests.</div>
+    </div>
+    <a href="/refunds/new" class="btn btn-outline-primary">Request Refund</a>
+  </div>
+
+  <% if (!requests || requests.length === 0) { %>
+    <div class="bg-white p-4 rounded-3 shadow-sm text-center">
+      <p class="mb-2">You have no refund requests yet.</p>
+      <a href="/refunds/new" class="btn btn-primary">Request a refund</a>
+    </div>
+  <% } else { %>
+    <div class="filter-bar mb-3">
+      <div class="row g-3 align-items-end">
+        <div class="col-md-5">
+          <label for="refundSearch" class="form-label mb-1 text-muted small">Search by order id</label>
+          <input id="refundSearch" type="search" class="form-control" placeholder="e.g., 1024" aria-label="Search refunds">
+        </div>
+        <div class="col-md-5">
+          <div class="d-flex flex-wrap gap-2">
+            <button class="status-chip active" data-status="all">All</button>
+            <button class="status-chip" data-status="pending">Pending</button>
+            <button class="status-chip" data-status="approved">Approved</button>
+            <button class="status-chip" data-status="rejected">Rejected</button>
+          </div>
+        </div>
+        <div class="col-md-2 text-md-end">
+          <div class="results-count" id="refundResultsCount">Showing 0 requests</div>
+        </div>
+      </div>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover align-middle bg-white shadow-sm">
+        <thead class="table-light text-center">
+          <tr>
+            <th>Request ID</th>
+            <th>Order</th>
+            <th>Requested</th>
+            <th>Payment</th>
+            <th>Status</th>
+            <th>Reason</th>
+            <th>Decision</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% requests.forEach(r => { %>
+            <% const statusLower = String(r.status || '').toLowerCase(); %>
+            <% const badge = statusLower === 'approved' ? 'text-bg-success' : (statusLower === 'rejected' ? 'text-bg-danger' : 'text-bg-warning'); %>
+            <% const paidAt = r.paid_at ? new Date(r.paid_at) : null; %>
+            <% const refundableUntil = paidAt ? new Date(paidAt.getTime() + 7 * 24 * 60 * 60 * 1000) : null; %>
+            <tr class="text-center refund-row" data-status="<%= statusLower %>" data-order="<%= r.orderId %>">
+              <td>#<%= r.id %><div class="text-muted small"><%= r.created_at ? new Date(r.created_at).toLocaleString() : '-' %></div></td>
+              <td>
+                <a href="/orders/<%= r.orderId %>">#<%= r.orderId %></a>
+                <div class="text-muted small">$<%= Number(r.orderTotal || 0).toFixed(2) %></div>
+              </td>
+              <td>$<%= Number(r.requested_amount).toFixed(2) %></td>
+              <td>
+                <div class="text-capitalize"><%= r.payment_method || '-' %></div>
+                <div class="text-muted small">Refundable until: <%= refundableUntil ? refundableUntil.toDateString() : '-' %></div>
+              </td>
+              <td><span class="badge <%= badge %>"><%= r.status %></span></td>
+              <td class="text-start"><%= r.reason %></td>
+              <td class="text-start">
+                <div class="text-muted small">Approved: <%= r.approved_amount ? `$${Number(r.approved_amount).toFixed(2)}` : '-' %></div>
+                <div class="text-muted small">Note: <%= r.decision_note || '-' %></div>
+                <div class="text-muted small">Decided: <%= r.decided_at ? new Date(r.decided_at).toLocaleString() : '-' %></div>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+</div>
+
+<script>
+  (function() {
+    const searchInput = document.getElementById('refundSearch');
+    const chips = Array.from(document.querySelectorAll('.status-chip'));
+    const rows = Array.from(document.querySelectorAll('.refund-row'));
+    const resultsCount = document.getElementById('refundResultsCount');
+
+    const filterRows = () => {
+      const term = (searchInput?.value || '').trim().toLowerCase();
+      const activeStatus = chips.find(c => c.classList.contains('active'))?.dataset.status || 'all';
+      let visible = 0;
+
+      rows.forEach(row => {
+        const status = row.dataset.status || '';
+        const order = String(row.dataset.order || '').toLowerCase();
+        let show = !term || order.includes(term);
+        if (activeStatus !== 'all') show = show && status === activeStatus;
+        row.style.display = show ? '' : 'none';
+        if (show) visible += 1;
+      });
+
+      if (resultsCount) {
+        resultsCount.textContent = `Showing ${visible} request${visible === 1 ? '' : 's'}`;
+      }
+    };
+
+    chips.forEach(chip => {
+      chip.addEventListener('click', () => {
+        chips.forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+        filterRows();
+      });
+    });
+
+    if (searchInput) {
+      let debounce;
+      searchInput.addEventListener('input', () => {
+        clearTimeout(debounce);
+        debounce = setTimeout(filterRows, 120);
+      });
+    }
+
+    filterRows();
+  })();
+</script>
+
+<%- include('partials/footer') %>

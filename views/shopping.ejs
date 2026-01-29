@@ -19,6 +19,7 @@
           <input id="productSearch" type="search" class="form-control" placeholder="Search by name..." aria-label="Search products">
           <button class="btn btn-outline-secondary" type="button" id="clearSearch">Clear</button>
         </div>
+        <div class="results-count mt-1" id="productResultsCount">Showing 0 products</div>
       </div>
       <div class="col-md-4">
         <div class="d-flex flex-wrap gap-2">
@@ -101,6 +102,11 @@
     <% }) %>
   </div>
 
+  <div id="productNoResults" class="text-center py-4 bg-white rounded-3 shadow-sm mt-3" style="display:none;">
+    <p class="mb-2">No products match your filters.</p>
+    <button class="btn btn-outline-primary" id="resetFilters" type="button">Reset filters</button>
+  </div>
+
   <div class="floating-cart glass px-3 py-2 d-flex align-items-center gap-2">
     <span class="fs-5">🛒</span>
     <div class="d-flex flex-column">
@@ -118,10 +124,21 @@
     const tiles = Array.from(document.querySelectorAll('.product-tile'));
     const chips = Array.from(document.querySelectorAll('.filter-chip'));
     const sortSelect = document.getElementById('sortSelect');
+    const resultsCount = document.getElementById('productResultsCount');
+    const noResults = document.getElementById('productNoResults');
+    const resetFilters = document.getElementById('resetFilters');
+
+    const setQueryParam = (key, value) => {
+      const url = new URL(window.location.href);
+      if (value) url.searchParams.set(key, value);
+      else url.searchParams.delete(key);
+      window.history.replaceState({}, '', url.toString());
+    };
 
     const filterTiles = () => {
       const term = (searchInput?.value || '').trim().toLowerCase();
       const activeFilter = chips.find(c => c.classList.contains('active'))?.dataset.filter || 'all';
+      let visibleCount = 0;
 
       tiles.forEach(tile => {
         const name = tile.dataset.name || '';
@@ -129,12 +146,23 @@
         const low = stock > 0 && stock < 10;
 
         let pass = !term || name.includes(term);
-        if (activeFilter === 'in') pass = pass && stock > 5;
+        if (activeFilter === 'in') pass = pass && stock > 0;
         if (activeFilter === 'low') pass = pass && low;
         if (activeFilter === 'out') pass = pass && stock <= 0;
 
         tile.style.display = pass ? '' : 'none';
+        if (pass) visibleCount += 1;
       });
+
+      if (resultsCount) {
+        resultsCount.textContent = `Showing ${visibleCount} product${visibleCount === 1 ? '' : 's'}`;
+      }
+      if (noResults) {
+        noResults.style.display = visibleCount === 0 ? '' : 'none';
+      }
+
+      setQueryParam('q', term || '');
+      setQueryParam('filter', activeFilter === 'all' ? '' : activeFilter);
     };
 
     const sortTiles = () => {
@@ -151,6 +179,7 @@
         return 0;
       });
       sorted.forEach(tile => grid.appendChild(tile));
+      setQueryParam('sort', value === 'default' ? '' : value);
     };
 
     chips.forEach(chip => {
@@ -178,6 +207,30 @@
       sortTiles();
       filterTiles();
     });
+
+    resetFilters?.addEventListener('click', () => {
+      searchInput.value = '';
+      chips.forEach(c => c.classList.remove('active'));
+      chips[0]?.classList.add('active');
+      sortSelect.value = 'default';
+      sortTiles();
+      filterTiles();
+    });
+
+    const params = new URLSearchParams(window.location.search);
+    const q = (params.get('q') || '').trim();
+    const filter = (params.get('filter') || '').trim();
+    const sort = (params.get('sort') || '').trim();
+    if (searchInput && q) searchInput.value = q;
+    if (filter) {
+      chips.forEach(c => c.classList.remove('active'));
+      const target = chips.find(c => c.dataset.filter === filter);
+      if (target) target.classList.add('active');
+    }
+    if (sortSelect && sort) sortSelect.value = sort;
+
+    sortTiles();
+    filterTiles();
   })();
 </script>
 
